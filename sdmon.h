@@ -1,3 +1,4 @@
+
 #pragma once
 #include <Arduino.h>
 
@@ -7,10 +8,10 @@
 struct SdMon {
   bool loaded = false;
   uint16_t w = 0, h = 0, frames = 0, frameMs = 100;
-  uint8_t scale = 2;       // factor de zoom entero al dibujar
+  uint8_t scale = 2;
   uint16_t palCount = 0;
   uint16_t pal[256];
-  uint8_t *data = nullptr;  // frames * w * h indices (0xFF = transparente)
+  uint8_t *data = nullptr;
 
   bool load(uint8_t dexNum, bool shiny = false);
   void unload();
@@ -25,9 +26,9 @@ enum : uint8_t {
 
 struct PmdAct {
   uint8_t w = 0, h = 0, frames = 0;
-  uint8_t base = 0;  // fila+1 del pixel mas bajo (anclar por los pies, no el lienzo)
+  uint8_t base = 0;
   uint16_t ms[24];
-  const uint8_t *data = nullptr;  // frames * w * h en el blob
+  const uint8_t *data = nullptr;
 };
 
 // sprite PMD multi-accion cargado de la SD a PSRAM
@@ -40,7 +41,9 @@ struct PmdMon {
 
   bool load(uint8_t dexNum, bool shiny = false);
   void unload();
-  bool has(uint8_t a) const { return loaded && a < PMD_NACTS && acts[a].frames > 0; }
+  bool has(uint8_t a) const {
+    return loaded && a < PMD_NACTS && acts[a].frames > 0;
+  }
 };
 
 // miniaturas de la galeria (thumbs.bin entero en PSRAM)
@@ -48,14 +51,17 @@ struct SdThumbs {
   bool loaded = false;
   uint8_t *data = nullptr;
   uint16_t count = 0;
-  uint32_t size = 0;  // bytes leidos: acota los offsets del fichero
+  uint32_t size = 0;
+
   bool load();
-  void unload();  // libera el blob: recargar tras recibir un thumbs.bin nuevo
-  const uint8_t *get(int16_t dex) const;  // blob: w,h,palCount,pal[],idx[]
+  void unload();
+  const uint8_t *get(int16_t dex) const;
 };
+
 extern SdThumbs thumbs;
 
-bool sdBegin();                 // monta la SD (SDMMC 1-bit), true si hay tarjeta
-bool sdSerialCommand(const String &line);  // PUT/LS por USB; true si la maneja
+bool sdBegin();
+bool sdSerialCommand(const String &line);
+
 extern bool sdReady;
-extern bool sdDirty;  // true tras recibir archivos: recargar sprite
+extern bool sdDirty;
