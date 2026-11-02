@@ -1,3 +1,4 @@
+
 #include "pet.h"
 #include "dex.h"
 #include "audio.h"
@@ -120,7 +121,7 @@ void Pet::tick() {
   }
 
   // el sueño es descanso: la energia se recupera y las necesidades bajan MUCHO
-  // mas lento que despierto y con suelo (amanece pidiendo algo de mimo, no a
+  // mas lento y con suelo (amanece pidiendo algo de mimo, no a
   // cero, sin descuidos ni escapadas). despierto: comida -2/min, hig/joy -1/min.
   // El peso aun se quema; la racha de buen cuidado (goodTicks) queda en pausa.
   if (sleeping) {
