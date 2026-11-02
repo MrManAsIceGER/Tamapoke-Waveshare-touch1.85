@@ -1,3 +1,4 @@
+
 #pragma once
 #include <Arduino.h>
 #include <Preferences.h>
@@ -76,7 +77,7 @@ public:
   uint16_t medals = 0, totalMedals = 0;
   uint16_t newMedal = 0;   // recien conseguida(s), para celebrar
   uint16_t lastMilestone = 0;  // hito de racha ya celebrado
-  uint16_t gameHi = 0;     // record del minijuego (del jugador)
+  uint16_t gameHi = 0;     // record del minijuego
   uint16_t strHi = 0;      // record de golpes al saco
 
   void begin();                 // carga estado de NVS (o crea el primer huevo)
@@ -192,15 +193,4 @@ private:
   uint8_t bondToday = 0;       // tope diario de subida de vinculo
   uint32_t medalUntil = 0;     // celebracion de medalla en pantalla
   uint32_t milestoneUntil = 0; // celebracion de hito de racha
-
-  uint32_t today() const { return lastSeenEpoch ? lastSeenEpoch / 86400 : 0; }
-  void registerCare();   // primer cuidado del dia: racha + vinculo
-  void addBond(uint8_t amt);
-  void checkMedals();
-  void tick();
-  void hatch();
-  void registerSpecies(int16_t dex);
-  void save();
-  void load();
-  static uint8_t clamp100(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
 };
