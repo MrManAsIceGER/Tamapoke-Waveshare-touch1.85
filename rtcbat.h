@@ -1,24 +1,27 @@
+
 #pragma once
 #include <Arduino.h>
 
-// RTC PCF85063: hora persistente mientras la placa tenga alimentacion
+// RTC PCF85063: Uhrzeit bleibt mit angeschlossener RTC-Batterie erhalten.
 bool rtcBegin();
-uint32_t rtcEpoch();             // segundos unix; 0 si el RTC no es valido
+uint32_t rtcEpoch();       // Unix-Sekunden; 0 wenn die RTC-Zeit ungültig ist
 void rtcSetEpoch(uint32_t e);
 
-// PMU AXP2101: estado de la bateria
+// Akku-/Ladefunktionen:
+// Das Board besitzt keinen vom Originalcode unterstützten AXP2101.
+// Die Funktionen bleiben aus Kompatibilitätsgründen erhalten.
 bool batBegin();
-void pmuEnablePanel();           // enciende BLDO1 (OLED VDD 3.3V); llamar antes de gfx->begin()
-void batSetPollMs(uint32_t ms);   // cada cuanto se lee el PMU por I2C (se alarga con la pantalla apagada)
-int batPercent();                // 0-100, -1 si no hay bateria conectada
-bool batCharging();
-int batMillivolts();               // tension de la bateria en mV, 0 si no hay lectura
-bool batShouldShutdown();          // descargada hasta el limite seguro (batcurve.h): guardar y apagar
-void batPowerOff();                // apagado fisico del PMU
-bool usbPresent();
-bool usbPresentNow();             // sin cache (una lectura I2C): para decidir si se puede dormir
+void pmuEnablePanel();     // Auf diesem Board nicht erforderlich
+void batSetPollMs(uint32_t ms);
+int batPercent();          // -1 = keine Messung verfügbar
+bool batCharging();        // Ladezustand nicht auslesbar
+int batMillivolts();       // 0 = keine Spannungsmessung verfügbar
+bool batShouldShutdown();  // automatische Akkuabschaltung nicht verfügbar
+void batPowerOff();        // keine programmatische PMU-Abschaltung
+bool usbPresent();         // konservativ: Versorgung als vorhanden behandeln
+bool usbPresentNow();
 
-// boton PWR del AXP2101: pulsacion larga 4s = apagado fisico (RTC sigue vivo);
-// la pulsacion corta la captura el firmware (pantalla on/off)
+// Hardware-Power-Taste:
+// Keine AXP2101-Power-Key-IRQ-Unterstützung auf diesem Board.
 void pwrSetup();
-bool pwrShortPressed();  // sondear en el loop
+bool pwrShortPressed();
