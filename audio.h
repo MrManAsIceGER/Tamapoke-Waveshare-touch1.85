@@ -1,26 +1,38 @@
+
 #pragma once
 #include <stdint.h>
 
-// Efectos de sonido del juego (cola, no bloqueante). El orden coincide con la
-// tabla SFX de audio.cpp.
+// Soundeffekte des Spiels.
+// Die Reihenfolge entspricht der SFX-Tabelle in audio.cpp.
 enum Sfx : uint8_t {
-  SFX_TAP = 0,  // tocar / boton
-  SFX_EAT,      // comer
-  SFX_PLAY,     // punto del minijuego / golpe
-  SFX_HEART,    // le gusta / mimo
-  SFX_HATCH,    // eclosion
-  SFX_EVOLVE,   // evolucion
-  SFX_MEDAL,    // medalla / hito
-  SFX_DENY,     // accion no permitida
-  SFX_BYE,      // despedida
-  SFX_LEVEL,    // sube de nivel
+  SFX_TAP = 0,
+  SFX_EAT,
+  SFX_PLAY,
+  SFX_HEART,
+  SFX_HATCH,
+  SFX_EVOLVE,
+  SFX_MEDAL,
+  SFX_DENY,
+  SFX_BYE,
+  SFX_LEVEL,
   SFX_COUNT
 };
 
-void audioBegin();          // init ES8311 + I2S + amplificador + tarea de audio
-void sfxPlay(uint8_t id);   // encola un efecto (no bloquea el loop)
+// Initialisiert I2S und den PCM5101-DAC.
+void audioBegin();
+
+// Spielt einen Soundeffekt nicht-blockierend ab.
+void sfxPlay(uint8_t id);
+
+// Ton ein-/ausschalten; Einstellung wird gespeichert.
 void audioSetEnabled(bool on);
 bool audioEnabled();
-void audioSetSleeping(bool sleeping);  // dormida: amplificador apagado
-bool audioBusy();                      // un efecto pedido en reposo aun puede estar sonando: no dormir la CPU
-void audioSetIdle(bool idle);          // sin uso reciente: amplificador apagado (un efecto lo enciende 4 s)
+
+// Audiozustand der Spielfigur.
+void audioSetSleeping(bool sleeping);
+
+// True, solange ein Soundeffekt im Ruhemodus noch gehalten wird.
+bool audioBusy();
+
+// Energiesparzustand bei längerer Inaktivität.
+void audioSetIdle(bool idle);
