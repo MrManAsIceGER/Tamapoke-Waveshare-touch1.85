@@ -326,7 +326,7 @@ void loop() {
   ensureMon();
 
   // PWR: a short press toggles the display; holding for 4 seconds cuts power
-  // die Batterie-Versorgung ab. Bei USB-Versorgung bleibt das Board ggf.
+  // cuts battery power. With USB power connected, the board may remain powered through USB.
   // weiterhin ueber USB gespeist.
   const PwrButtonEvent pwrEvent = pwrPoll();
   if (pwrEvent == PWR_EVENT_LONG) {
