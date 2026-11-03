@@ -102,7 +102,7 @@ void TamaPoke_ST77916_Output::draw16bitRGBBitmap(
             dmaBuffer
         );
 
-        // Das Timing entspricht dem erfolgreich getesteten Waveshare-Panelpfad.
-        delay(5);
+        // LCD_addWindow wartet bereits auf den tatsaechlichen DMA-Abschluss.
+        // Keine pauschale Wartezeit pro Streifen mehr.
     }
 }
