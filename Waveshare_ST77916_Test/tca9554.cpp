@@ -47,7 +47,7 @@ bool tca9554Begin(TwoWire &wire)
         return false;
     }
 
-    // Reset-Ausgaenge erst auf HIGH setzen, bevor sie als Ausgaenge aktiviert werden.
+    // Set reset outputs HIGH before configuring them as outputs.
     output |= RESET_PINS_MASK;
     if (!writeRegister(REG_OUTPUT, output)) return false;
 
