@@ -1,23 +1,23 @@
-
 #include "TamaPoke_ST77916_Output.h"
-
-#include <algorithm>
-#include <cstring>
 
 #include "Display_ST77916.h"
 
 /*
- * 360 Pixel x 22 Zeilen x 2 Byte = 15.840 Byte.
- * Der Waveshare-Treiber ist auf maximal 16 KB Transfergroesse konfiguriert.
+ * TamaPoke zeichnet weiterhin im originalen Koordinatensystem 466 x 466.
+ * Das physische Waveshare-Display hat 360 x 360 Pixel.
  *
- * Der Puffer liegt statisch im internen RAM und ist damit fuer SPI-DMA
- * geeignet. LCD_addWindow() tauscht die Byte-Reihenfolge im uebergebenen
- * Puffer in-place. Deshalb kopieren wir jeden Teilframe zuerst hierher:
- * der originale Arduino_Canvas-Framebuffer bleibt unveraendert.
+ * Der Arduino_Canvas uebergibt beim flush() den kompletten 466x466-RGB565-
+ * Frame. Wir skalieren ihn hier per Nearest-Neighbor auf 360x360 und senden
+ * maximal 22 Zeilen pro DMA-Transfer (360 * 22 * 2 = 15.840 Byte).
+ *
+ * LCD_addWindow() vertauscht die Byte-Reihenfolge im Puffer in-place.
+ * Deshalb wird jeder Teilframe in einen eigenen DMA-Puffer kopiert.
  */
 namespace {
 constexpr int16_t LCD_W = EXAMPLE_LCD_WIDTH;
 constexpr int16_t LCD_H = EXAMPLE_LCD_HEIGHT;
+constexpr int16_t GAME_W = 466;
+constexpr int16_t GAME_H = 466;
 constexpr int16_t TRANSFER_ROWS = 22;
 
 static uint16_t dmaBuffer[LCD_W * TRANSFER_ROWS];
@@ -28,7 +28,7 @@ TamaPoke_ST77916_Output::TamaPoke_ST77916_Output()
 }
 
 bool TamaPoke_ST77916_Output::begin(int32_t speed) {
-    (void)speed;  // Die Waveshare-QSPI-Taktfrequenz ist im Treiber festgelegt.
+    (void)speed;  // Die QSPI-Taktfrequenz wird im Waveshare-Treiber festgelegt.
 
     if (panel_handle == nullptr) {
         LCD_Init();
@@ -37,8 +37,7 @@ bool TamaPoke_ST77916_Output::begin(int32_t speed) {
     return panel_handle != nullptr;
 }
 
-// Diese Funktionen sind hier nicht erforderlich: Arduino_Canvas verwendet
-// beim Flush ausschliesslich draw16bitRGBBitmap().
+// Arduino_Canvas verwendet beim flush() draw16bitRGBBitmap().
 void TamaPoke_ST77916_Output::drawBitmap(
     int16_t, int16_t, uint8_t *, int16_t, int16_t, uint16_t, uint16_t) {
 }
@@ -64,45 +63,46 @@ void TamaPoke_ST77916_Output::draw16bitRGBBitmap(
         return;
     }
 
-    // Zielrechteck auf die physische Displayflaeche begrenzen.
-    const int16_t x0 = std::max<int16_t>(0, x);
-    const int16_t y0 = std::max<int16_t>(0, y);
-    const int16_t x1 = std::min<int16_t>(LCD_W, x + w);
-    const int16_t y1 = std::min<int16_t>(LCD_H, y + h);
-
-    if (x0 >= x1 || y0 >= y1) {
+    // Dieser Ausgang ist fuer den vollstaendigen TamaPoke-Canvas vorgesehen.
+    // Andere/partielle Bitmaps werden nicht stillschweigend falsch skaliert.
+    if (x != 0 || y != 0 || w != GAME_W || h != GAME_H) {
+        Serial.printf("ST77916 Output: unerwartete Bitmap %dx%d bei %d,%d\n",
+                      w, h, x, y);
         return;
     }
 
-    const int16_t clippedW = x1 - x0;
-    const int16_t clippedH = y1 - y0;
-    const int16_t sourceX = x0 - x;
-    const int16_t sourceY = y0 - y;
-
-    for (int16_t rowStart = 0; rowStart < clippedH; rowStart += TRANSFER_ROWS) {
+    for (int16_t rowStart = 0; rowStart < LCD_H; rowStart += TRANSFER_ROWS) {
         const int16_t rowsThisTransfer =
-            std::min<int16_t>(TRANSFER_ROWS, clippedH - rowStart);
+            (rowStart + TRANSFER_ROWS <= LCD_H)
+                ? TRANSFER_ROWS
+                : (LCD_H - rowStart);
 
-        // Kontiguierlichen RGB565-Teilframe in den DMA-Puffer kopieren.
         for (int16_t row = 0; row < rowsThisTransfer; ++row) {
-            const uint16_t *src =
-                bitmap + (sourceY + rowStart + row) * w + sourceX;
-            uint16_t *dst = dmaBuffer + row * clippedW;
-            std::memcpy(dst, src, clippedW * sizeof(uint16_t));
+            const int16_t dstY = rowStart + row;
+
+            // Pixelmitte abbilden, damit auch die letzte Quellzeile/-spalte
+            // in der Skalierung beruecksichtigt wird.
+            const int16_t srcY =
+                static_cast<int16_t>(((2 * dstY + 1) * GAME_H) / (2 * LCD_H));
+            const uint16_t *srcRow = bitmap + static_cast<int32_t>(srcY) * w;
+            uint16_t *dstRow = dmaBuffer + static_cast<int32_t>(row) * LCD_W;
+
+            for (int16_t dstX = 0; dstX < LCD_W; ++dstX) {
+                const int16_t srcX =
+                    static_cast<int16_t>(((2 * dstX + 1) * GAME_W) / (2 * LCD_W));
+                dstRow[dstX] = srcRow[srcX];
+            }
         }
 
-        // LCD_addWindow() verwendet inklusive Endkoordinaten und fuehrt
-        // den vom Waveshare-Treiber erwarteten Byte-Tausch selbst aus.
         LCD_addWindow(
-            static_cast<uint16_t>(x0),
-            static_cast<uint16_t>(y0 + rowStart),
-            static_cast<uint16_t>(x1 - 1),
-            static_cast<uint16_t>(y0 + rowStart + rowsThisTransfer - 1),
+            0,
+            static_cast<uint16_t>(rowStart),
+            static_cast<uint16_t>(LCD_W - 1),
+            static_cast<uint16_t>(rowStart + rowsThisTransfer - 1),
             dmaBuffer
         );
 
-        // Der funktionierende Test uebergab den naechsten DMA-Puffer erst
-        // nach 5 ms. Das gleiche sichere Timing nutzen wir auch hier.
+        // Das Timing entspricht dem erfolgreich getesteten Waveshare-Panelpfad.
         delay(5);
     }
 }
