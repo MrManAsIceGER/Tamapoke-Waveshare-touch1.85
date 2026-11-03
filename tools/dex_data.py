@@ -29,7 +29,7 @@ TYPE_ACCENTS = {
     'dragon':    '#5a52c4',
 }
 
-# num, slug, display, tipo, evolucionaA, nivel
+# num, slug, display, type, evolvesTo, level
 DEX = [
     (1, 'bulbasaur', 'BULBASAUR', 'planta', 2, 16),
     (2, 'ivysaur', 'IVYSAUR', 'planta', 3, 32),
@@ -163,7 +163,7 @@ DEX = [
     (130, 'gyarados', 'GYARADOS', 'agua', 0, 0),
     (131, 'lapras', 'LAPRAS', 'agua', 0, 0),
     (132, 'ditto', 'DITTO', 'normal', 0, 0),
-    (133, 'eevee', 'EEVEE', 'normal', 134, 30),  # rama al azar en el juego
+    (133, 'eevee', 'EEVEE', 'normal', 134, 30),  # random branch in the game
     (134, 'vaporeon', 'VAPOREON', 'agua', 0, 0),
     (135, 'jolteon', 'JOLTEON', 'electrico', 0, 0),
     (136, 'flareon', 'FLAREON', 'fuego', 0, 0),
@@ -184,10 +184,10 @@ DEX = [
     (151, 'mew', 'MEW', 'psiquico', 0, 0),
 ]
 
-# el primer huevo de la partida siempre es un inicial clasico
+# the first egg in a new game is always a classic starter
 CLASSIC = [1, 4, 7, 25, 133]
 
-# rarezas de las formas base (lo que no este aqui y sea base = comun)
+# rarities of base forms (base forms not listed here are common)
 RARE = {58, 77, 83, 88, 95, 106, 107, 108, 111, 113, 114, 115, 122, 123,
         124, 125, 126, 127, 128, 131, 132, 137, 138, 140, 142, 143, 147}
 LEGENDARY = {144, 145, 146, 150, 151}
