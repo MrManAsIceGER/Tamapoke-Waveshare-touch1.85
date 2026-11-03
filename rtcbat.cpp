@@ -135,16 +135,117 @@ bool usbPresentNow() {
 }
 
 // ------------------------------------------------------------
-// Power-Taste
+// PWR-Taste / Batterie-Haltefunktion
 //
-// Die AXP2101-Power-Key-IRQ-Funktionen des Originalboards
-// stehen hier nicht zur Verfügung.
+// Waveshare ESP32-S3-Touch-LCD-1.85:
+//   GPIO6 = Key BAT (PWR-Taste, aktiv LOW)
+//   GPIO7 = BAT Control (HIGH haelt die Batterie-Versorgung aktiv)
+//
+// Die Werte stammen aus dem offiziellen Board-Schaltplan. GPIO7 muss
+// moeglichst frueh auf HIGH gesetzt werden, damit das Board nach dem
+// Einschalten ueber PWR weiter mit Batteriespannung versorgt bleibt.
 // ------------------------------------------------------------
 
+static bool pwrReady = false;
+static bool pwrRawPressed = false;
+static bool pwrStablePressed = false;
+static bool pwrIgnoreNextRelease = false;
+static bool pwrLongReported = false;
+static bool pwrShortPending = false;
+static bool pwrLongPending = false;
+static uint32_t pwrLastChangeMs = 0;
+static uint32_t pwrPressedAtMs = 0;
+
+static constexpr uint32_t PWR_DEBOUNCE_MS = 35;
+static constexpr uint32_t PWR_SHORT_MIN_MS = 60;
+static constexpr uint32_t PWR_SHORT_MAX_MS = 1500;
+static constexpr uint32_t PWR_LONG_MS = 4000;
+
 void pwrSetup() {
-  // Keine AXP2101-Power-Key-Konfiguration.
+  // Erst die Stromversorgung halten, danach den Taster konfigurieren.
+  pinMode(BAT_CTRL_PIN, OUTPUT);
+  digitalWrite(BAT_CTRL_PIN, HIGH);
+
+  pinMode(PWR_KEY_PIN, INPUT_PULLUP);
+
+  const bool pressed = (digitalRead(PWR_KEY_PIN) == LOW);
+  pwrRawPressed = pressed;
+  pwrStablePressed = pressed;
+  pwrIgnoreNextRelease = pressed;  // Einschalt-Druck nicht als Spielaktion werten
+  pwrLongReported = false;
+  pwrShortPending = false;
+  pwrLongPending = false;
+  pwrLastChangeMs = millis();
+  pwrPressedAtMs = pwrLastChangeMs;
+  pwrReady = true;
 }
 
-bool pwrShortPressed() {
-  return false;
+static void pwrUpdateButton() {
+  if (!pwrReady) return;
+
+  const uint32_t now = millis();
+  const bool rawPressed = (digitalRead(PWR_KEY_PIN) == LOW);
+
+  if (rawPressed != pwrRawPressed) {
+    pwrRawPressed = rawPressed;
+    pwrLastChangeMs = now;
+    return;
+  }
+
+  if (now - pwrLastChangeMs < PWR_DEBOUNCE_MS) return;
+
+  if (rawPressed != pwrStablePressed) {
+    pwrStablePressed = rawPressed;
+
+    if (pwrStablePressed) {
+      pwrPressedAtMs = now;
+      pwrLongReported = false;
+      Serial.println("[PWR] Taste gedrueckt");
+    } else {
+      const uint32_t duration = now - pwrPressedAtMs;
+      Serial.printf("[PWR] Taste losgelassen nach %lu ms\n",
+                    (unsigned long)duration);
+
+      if (pwrIgnoreNextRelease) {
+        pwrIgnoreNextRelease = false;
+      } else if (duration >= PWR_LONG_MS) {
+        if (!pwrLongReported) pwrLongPending = true;
+      } else if (duration >= PWR_SHORT_MIN_MS &&
+                 duration <= PWR_SHORT_MAX_MS) {
+        pwrShortPending = true;
+      }
+    }
+  }
+
+  // Lange Tastendruecke bereits waehrend des Haltens erkennen.
+  // Der Sonderfall eines beim Booten gehaltenen PWR-Tasters bleibt ignoriert.
+  if (pwrStablePressed && !pwrIgnoreNextRelease && !pwrLongReported &&
+      now - pwrPressedAtMs >= PWR_LONG_MS) {
+    pwrLongReported = true;
+    pwrLongPending = true;
+  }
+}
+
+PwrButtonEvent pwrPoll() {
+  pwrUpdateButton();
+
+  if (pwrLongPending) {
+    pwrLongPending = false;
+    Serial.println("[PWR] langer Tastendruck");
+    return PWR_EVENT_LONG;
+  }
+
+  if (pwrShortPending) {
+    pwrShortPending = false;
+    Serial.println("[PWR] kurzer Tastendruck");
+    return PWR_EVENT_SHORT;
+  }
+
+  return PWR_EVENT_NONE;
+}
+
+void batPowerOff() {
+  Serial.println("[PWR] BAT Control LOW - Batterie-Versorgung wird getrennt");
+  digitalWrite(BAT_CTRL_PIN, LOW);
+  delay(100);
 }
