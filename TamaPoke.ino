@@ -3,7 +3,7 @@
 //
 // Libraries (Arduino Library Manager or the Waveshare repository):
 //   - "GFX Library for Arduino" (moononournation)
-//   - "SensorLib" (Lewis He), driver tactil CST816
+//   - "SensorLib" (Lewis He), CST816 touch driver
 //
 // Placa: ESP32S3 Dev Module | Flash 16MB | PSRAM: OPI PSRAM | USB CDC On Boot: Enabled
 //
