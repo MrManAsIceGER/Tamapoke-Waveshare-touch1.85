@@ -8,14 +8,15 @@ uint32_t rtcEpoch();       // Unix-Sekunden; 0 wenn die RTC-Zeit ungültig ist
 void rtcSetEpoch(uint32_t e);
 
 // Akku-/Ladefunktionen:
-// Das Board besitzt keinen vom Originalcode unterstützten AXP2101.
-// Die Funktionen bleiben aus Kompatibilitätsgründen erhalten.
+// Batteriespannung ueber BAT_ADC (GPIO8, Spannungsteiler 1:3).
+// batPercent() ist eine grobe Schaetzung aus der Zellspannung.
+// Ein Software-Ladestatus ist mangels ETA6098-STAT-GPIO nicht verfuegbar.
 bool batBegin();
 void pmuEnablePanel();     // Auf diesem Board nicht erforderlich
 void batSetPollMs(uint32_t ms);
-int batPercent();          // -1 = keine Messung verfügbar
-bool batCharging();        // Ladezustand nicht auslesbar
-int batMillivolts();       // 0 = keine Spannungsmessung verfügbar
+int batPercent();          // -1 = kein Akku erkannt; sonst spannungsbasierte Schaetzung
+bool batCharging();        // false: ETA6098-STAT ist nicht am ESP32 verfuegbar
+int batMillivolts();       // gemessene/hochgerechnete Akkuspannung; 0 ohne Akku
 bool batShouldShutdown();  // automatische Akkuabschaltung nicht verfügbar
 void batPowerOff();        // GPIO7 LOW trennt die Batterie-Versorgung
 bool usbPresent();         // konservativ: Versorgung als vorhanden behandeln
