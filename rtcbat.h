@@ -4,26 +4,26 @@
 
 // RTC PCF85063: Uhrzeit bleibt mit angeschlossener RTC-Batterie erhalten.
 bool rtcBegin();
-uint32_t rtcEpoch();       // Unix-Sekunden; 0 wenn die RTC-Zeit ungültig ist
+uint32_t rtcEpoch();       // Unix seconds; 0 if the RTC time is invalid
 void rtcSetEpoch(uint32_t e);
 
-// Akku-/Ladefunktionen:
-// Batteriespannung ueber BAT_ADC (GPIO8, Spannungsteiler 1:3).
-// batPercent() ist eine grobe Schaetzung aus der Zellspannung.
-// Ein Software-Ladestatus ist mangels ETA6098-STAT-GPIO nicht verfuegbar.
+// Battery/charging functions:
+// Battery voltage via BAT_ADC (GPIO8, 1:3 voltage divider).
+// batPercent() is a rough estimate based on cell voltage.
+// Software charging status is unavailable because ETA6098-STAT is not connected to an ESP32 GPIO.
 bool batBegin();
-void pmuEnablePanel();     // Auf diesem Board nicht erforderlich
+void pmuEnablePanel();     // Not required on this board
 void batSetPollMs(uint32_t ms);
-int batPercent();          // -1 = kein Akku erkannt; sonst spannungsbasierte Schaetzung
-bool batCharging();        // false: ETA6098-STAT ist nicht am ESP32 verfuegbar
-int batMillivolts();       // gemessene/hochgerechnete Akkuspannung; 0 ohne Akku
-bool batShouldShutdown();  // automatische Akkuabschaltung nicht verfügbar
-void batPowerOff();        // GPIO7 LOW trennt die Batterie-Versorgung
-bool usbPresent();         // konservativ: Versorgung als vorhanden behandeln
+int batPercent();          // -1 = no battery detected; otherwise a voltage-based estimate
+bool batCharging();        // false: ETA6098-STAT is not available to the ESP32
+int batMillivolts();       // Measured/scaled battery voltage; 0 if no battery is detected
+bool batShouldShutdown();  // Automatic battery shutdown is not available
+void batPowerOff();        // GPIO7 LOW disconnects battery power
+bool usbPresent();         // Conservatively treat the power supply as present
 bool usbPresentNow();
 
-// Hardware-Power-Taste des Waveshare 1.85 Rev 2.0.
-// Kurz: Display ein/aus. Lang (4 s): Batterie-Versorgung abschalten.
+// Hardware PWR button on the Waveshare 1.85 Rev 2.0.
+// Short press: display on/off. Long press (4 s): disconnect battery power.
 enum PwrButtonEvent : uint8_t {
   PWR_EVENT_NONE = 0,
   PWR_EVENT_SHORT,
