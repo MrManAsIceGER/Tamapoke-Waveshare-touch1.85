@@ -16,7 +16,7 @@ struct DexEntry {
   uint8_t evolveLevel;
   uint8_t rarity;       // can hatch if > 0
   uint16_t accent;      // type color in RGB565 for the UI
-  uint8_t bHp, bAtk, bDef, bSpe;  // base stats reales de gen 1
+  uint8_t bHp, bAtk, bDef, bSpe;  // Gen 1 base stats
   uint8_t biome;        // 0 meadow 1 beach 2 forest 3 volcano 4 mountain 5 snow
 };
 
