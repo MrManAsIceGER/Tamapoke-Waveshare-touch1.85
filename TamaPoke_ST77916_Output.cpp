@@ -28,7 +28,7 @@ TamaPoke_ST77916_Output::TamaPoke_ST77916_Output()
 }
 
 bool TamaPoke_ST77916_Output::begin(int32_t speed) {
-    (void)speed;  // Die QSPI-Taktfrequenz wird im Waveshare-Treiber festgelegt.
+    (void)speed;  // The QSPI clock frequency is configured in the Waveshare driver.
 
     if (panel_handle == nullptr) {
         LCD_Init();
@@ -37,7 +37,7 @@ bool TamaPoke_ST77916_Output::begin(int32_t speed) {
     return panel_handle != nullptr;
 }
 
-// Arduino_Canvas verwendet beim flush() draw16bitRGBBitmap().
+// Arduino_Canvas calls draw16bitRGBBitmap() during flush().
 void TamaPoke_ST77916_Output::drawBitmap(
     int16_t, int16_t, uint8_t *, int16_t, int16_t, uint16_t, uint16_t) {
 }
@@ -63,8 +63,8 @@ void TamaPoke_ST77916_Output::draw16bitRGBBitmap(
         return;
     }
 
-    // Dieser Ausgang ist fuer den vollstaendigen TamaPoke-Canvas vorgesehen.
-    // Andere/partielle Bitmaps werden nicht stillschweigend falsch skaliert.
+    // This output adapter is intended for the complete TamaPoke canvas.
+    // Other/partial bitmaps are not silently scaled incorrectly.
     if (x != 0 || y != 0 || w != GAME_W || h != GAME_H) {
         Serial.printf("ST77916 Output: unerwartete Bitmap %dx%d bei %d,%d\n",
                       w, h, x, y);
@@ -80,8 +80,8 @@ void TamaPoke_ST77916_Output::draw16bitRGBBitmap(
         for (int16_t row = 0; row < rowsThisTransfer; ++row) {
             const int16_t dstY = rowStart + row;
 
-            // Pixelmitte abbilden, damit auch die letzte Quellzeile/-spalte
-            // in der Skalierung beruecksichtigt wird.
+            // Map pixel centers so the final source row/column is also
+            // included in the scaling.
             const int16_t srcY =
                 static_cast<int16_t>(((2 * dstY + 1) * GAME_H) / (2 * LCD_H));
             const uint16_t *srcRow = bitmap + static_cast<int32_t>(srcY) * w;
@@ -102,7 +102,7 @@ void TamaPoke_ST77916_Output::draw16bitRGBBitmap(
             dmaBuffer
         );
 
-        // LCD_addWindow wartet bereits auf den tatsaechlichen DMA-Abschluss.
-        // Keine pauschale Wartezeit pro Streifen mehr.
+        // LCD_addWindow now waits for the actual DMA completion.
+        // No fixed delay is needed after each stripe.
     }
 }
