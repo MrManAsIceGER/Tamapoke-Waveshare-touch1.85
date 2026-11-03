@@ -21,7 +21,12 @@ void batPowerOff();        // keine programmatische PMU-Abschaltung
 bool usbPresent();         // konservativ: Versorgung als vorhanden behandeln
 bool usbPresentNow();
 
-// Hardware-Power-Taste:
-// Keine AXP2101-Power-Key-IRQ-Unterstützung auf diesem Board.
+// Hardware-Power-Taste des Waveshare 1.85 Rev 2.0.
+// Kurz: Display ein/aus. Lang (4 s): Batterie-Versorgung abschalten.
+enum PwrButtonEvent : uint8_t {
+  PWR_EVENT_NONE = 0,
+  PWR_EVENT_SHORT,
+  PWR_EVENT_LONG
+};
 void pwrSetup();
-bool pwrShortPressed();
+PwrButtonEvent pwrPoll();
