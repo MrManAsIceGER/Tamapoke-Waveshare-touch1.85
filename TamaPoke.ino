@@ -177,7 +177,6 @@ void setup() {
   // CRITICO: sin esto, Serial.print BLOQUEA el juego cuando no hay un
   // monitor serie abierto en el host (el bufer TX del USB CDC se llena
   // y nadie lo vacia) -> con timeout 0 los mensajes se descartan
-  Serial.setTxTimeoutMs(0);
   Serial.printf("TamaPoke fw v%s\n", FW_VERSION);
   loadLang();  // idioma guardado (ES por defecto)
   Wire.begin(IIC_SDA, IIC_SCL);
@@ -209,7 +208,7 @@ void setup() {
   // QSPI a 80MHz (por defecto 40): el flush del framebuffer es el cuello de
   // botella del fps (~56ms a 40MHz). Si el panel mostrara basura, bajar a 40M.
   if (!gfx->begin(80000000)) Serial.println("gfx->begin() fallo");
-  panel->setBrightness(180);
+  Set_Backlight(71);
   applyLangFont();  // fuente del idioma guardado (clasica salvo CJK)
 
   touch.setPins(TP_RESET, TP_INT);
