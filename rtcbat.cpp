@@ -30,7 +30,7 @@ uint32_t rtcEpoch() {
 
   RTC_DateTime t = rtc.getDateTime();
 
-  // Plausibilitätsprüfung der gespeicherten Uhrzeit
+  // Plausibility check for the stored time
   if (t.getYear() < 2025 || t.getYear() > 2120) {
     return 0;
   }
@@ -44,8 +44,8 @@ uint32_t rtcEpoch() {
   tmv.tm_min  = t.getMinute();
   tmv.tm_sec  = t.getSecond();
 
-  // Die RTC wird in UTC geführt.
-  // Das vermeidet Abweichungen durch Sommer-/Winterzeit.
+  // The RTC uses UTC.
+  // This avoids daylight-saving-time changes.
   time_t e = mktime(&tmv);
 
   return e > 0 ? (uint32_t)e : 0;
@@ -72,14 +72,14 @@ void rtcSetEpoch(uint32_t e) {
 }
 
 // ------------------------------------------------------------
-// Akku- und Ladeverwaltung
+// Battery and charging management
 //
 // Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0:
-//   BAT_ADC liegt auf GPIO8.
-//   200 kOhm / 100 kOhm Spannungsteiler: VBAT = VADC * 3.
-//   Der ADC liefert nur eine spannungsbasierte SOC-Schaetzung.
-//   ETA6098-STAT treibt die separate Lade-LED und ist nicht am ESP32
-//   angeschlossen; der Software-Ladezustand bleibt daher unbekannt.
+// BAT_ADC is connected to GPIO8.
+// 200 kOhm / 100 kOhm voltage divider: VBAT = VADC * 3.
+// The ADC provides only a voltage-based state-of-charge estimate.
+// ETA6098-STAT drives the separate charge LED and is not
+// connected to the ESP32; software charging status is therefore unavailable.
 // ------------------------------------------------------------
 
 static bool batReady = false;
@@ -98,8 +98,8 @@ struct BatteryCurvePoint {
   uint8_t percent;
 };
 
-// Grobe 1S-Li-Ion-Leerlaufkurve. Unter Last und waehrend des Ladens
-// kann die angezeigte Schaetzung von der tatsaechlichen Kapazitaet abweichen.
+// Approximate 1-cell Li-ion open-circuit curve. Under load and while charging,
+// the displayed estimate may differ from the actual capacity.
 static const BatteryCurvePoint BATTERY_CURVE[] = {
   { 3300,   0 },
   { 3500,   5 },
@@ -149,8 +149,8 @@ static void batSampleVoltage() {
   batLastSampleMs = millis();
   batHasSample = true;
 
-  // Ohne angeschlossenen Akku liegt BAT_ADC durch den unteren Widerstand
-  // nahe 0 V. Dann wird das Batteriesymbol wie bisher ausgeblendet.
+  // Without a connected battery, the lower resistor pulls BAT_ADC
+  // close to 0 V. The battery icon is then hidden as before.
   if (batteryMv < BAT_PRESENT_MIN_MV) {
     batLastMv = 0;
     batLastPercent = -1;
@@ -185,12 +185,12 @@ bool batBegin() {
 }
 
 void pmuEnablePanel() {
-  // Nicht benoetigt: die Panelversorgung wird nicht ueber einen AXP2101
-  // oder einen separaten PMU-Ausgang geschaltet.
+  // Not required: the panel supply is not controlled by an AXP2101
+  // or a separate PMU output.
 }
 
 void batSetPollMs(uint32_t ms) {
-  // Mindestens 250 ms Abstand, damit ADC-Messungen nie den Renderloop fluten.
+  // At least 250 ms between samples, so ADC reads never flood the render loop.
   batPollIntervalMs = (ms < 250) ? 250 : ms;
 }
 
@@ -200,8 +200,8 @@ int batPercent() {
 }
 
 bool batCharging() {
-  // ETA6098-STAT ist nur mit der Hardware-Lade-LED verbunden.
-  // Ein Software-Ladesymbol waere ohne zusaetzliche Leitung geraten.
+  // ETA6098-STAT is connected only to the hardware charge LED.
+  // A software charging icon would be guesswork without an additional signal wire.
   return false;
 }
 
@@ -211,14 +211,14 @@ int batMillivolts() {
 }
 
 bool batShouldShutdown() {
-  // Keine automatische harte Abschaltung auf Basis der nur geschaetzten
-  // Zellspannung: dafuer waeren eine validierte Schwelle und USB-Erkennung noetig.
+  // No automatic hard shutdown based on the estimated
+  // cell voltage: a validated threshold and USB detection would be required.
   return false;
 }
 
 bool usbPresent() {
-  // Konservativer Rueckgabewert: verhindert eine unbeabsichtigte Abschaltung,
-  // solange das Board keine separate Software-USB-Erkennung bereitstellt.
+  // Conservative return value to prevent an unintended shutdown,
+  // since the board does not provide separate software USB detection.
   return true;
 }
 
@@ -227,15 +227,15 @@ bool usbPresentNow() {
 }
 
 // ------------------------------------------------------------
-// PWR-Taste / Batterie-Haltefunktion
+// PWR button / battery power hold
 //
 // Waveshare ESP32-S3-Touch-LCD-1.85:
-//   GPIO6 = Key BAT (PWR-Taste, aktiv LOW)
-//   GPIO7 = BAT Control (HIGH haelt die Batterie-Versorgung aktiv)
+// GPIO6 = Key BAT (PWR button, active LOW)
+// GPIO7 = BAT Control (HIGH keeps battery power enabled)
 //
-// Die Werte stammen aus dem offiziellen Board-Schaltplan. GPIO7 muss
-// moeglichst frueh auf HIGH gesetzt werden, damit das Board nach dem
-// Einschalten ueber PWR weiter mit Batteriespannung versorgt bleibt.
+// Values are taken from the official board schematic. GPIO7 must
+// be driven HIGH as early as possible so the board remains
+// powered from the battery after startup via PWR.
 // ------------------------------------------------------------
 
 static bool pwrReady = false;
@@ -253,7 +253,7 @@ static constexpr uint32_t PWR_SHORT_MIN_MS = 60;
 static constexpr uint32_t PWR_LONG_MS = 4000;
 
 void pwrSetup() {
-  // Erst die Stromversorgung halten, danach den Taster konfigurieren.
+  // Enable the power supply first, then configure the button.
   pinMode(BAT_CTRL_PIN, OUTPUT);
   digitalWrite(BAT_CTRL_PIN, HIGH);
 
@@ -262,7 +262,7 @@ void pwrSetup() {
   const bool pressed = (digitalRead(PWR_KEY_PIN) == LOW);
   pwrRawPressed = pressed;
   pwrStablePressed = pressed;
-  pwrIgnoreNextRelease = pressed;  // Einschalt-Druck nicht als Spielaktion werten
+  pwrIgnoreNextRelease = pressed;  // Do not treat the power-on press as a game action
   pwrLongReported = false;
   pwrShortPending = false;
   pwrLongPending = false;
@@ -308,8 +308,8 @@ static void pwrUpdateButton() {
     }
   }
 
-  // Lange Tastendruecke bereits waehrend des Haltens erkennen.
-  // Der Sonderfall eines beim Booten gehaltenen PWR-Tasters bleibt ignoriert.
+  // Detect long button presses while the button is still held.
+  // A PWR button held during boot is still ignored.
   if (pwrStablePressed && !pwrIgnoreNextRelease && !pwrLongReported &&
       now - pwrPressedAtMs >= PWR_LONG_MS) {
     pwrLongReported = true;
