@@ -1,7 +1,7 @@
 #pragma once
 
-// Kleine Kompatibilitaetsschicht fuer den originalen Waveshare-Displaytreiber.
-// Die eigentliche Expander-Ansteuerung erfolgt ueber den zuvor getesteten tca9554.cpp.
+// Small compatibility layer for the original Waveshare display driver.
+// The actual expander control is handled by the previously tested tca9554.cpp.
 #include <Arduino.h>
 #include "tca9554.h"
 
