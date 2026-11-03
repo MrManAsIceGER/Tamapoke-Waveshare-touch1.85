@@ -70,11 +70,11 @@ uint32_t walkLast = 0;  // Time of the last walking step (0 = none yet)
 #define PET_GROUND 304  // Pet ground line
 PmdMon galleryPmd;  // Large sprite for the Pokédex detail view (PMD/TPK2, licensed)
 
-// galeria pokedex
+// Pokédex gallery
 bool galleryOpen = false;
 bool galleryDirty = false;
 int galleryPage = 0;        // 10 paginas de 16
-int16_t galleryDetail = 0;  // dex en vista detalle, 0 = rejilla
+int16_t galleryDetail = 0;  // Dex entry in detail view; 0 = grid
 
 bool screenOff = false;       // Short press of the PWR button
 bool cardOpen = false;        // Pet profile card (vertical swipe)
@@ -98,7 +98,7 @@ float ballX, ballY, ballVX, ballVY, gamePetX;
 uint32_t lastGameStep = 0;  // Last stepGame() call: physics uses elapsed time, not frame count
 uint16_t gameScore = 0;
 uint8_t gameMisses = 0;
-float hitX, hitY;             // ultimo golpe (anillo de impacto)
+float hitX, hitY;             // Last hit (impact ring)
 uint32_t hitTime = 0;
 bool gameNewHi = false;
 
@@ -129,10 +129,10 @@ struct Btn {
   const char *const *icon;
 };
 Btn buttons[4] = {
-  { 140, 390, SPR_ICON_FOOD },   // comer
-  { 202, 404, SPR_ICON_PLAY },   // jugar
+  { 140, 390, SPR_ICON_FOOD },   // Feed
+  { 202, 404, SPR_ICON_PLAY },   // Play
   { 264, 404, SPR_ICON_LIGHT },  // luz
-  { 326, 390, SPR_ICON_CLEAN },  // bano
+  { 326, 390, SPR_ICON_CLEAN },  // Bath
 };
 #define BTN_HALF 26  // boton de 52x52
 #define BTN_HIT 36   // Touch hit radius (slightly generous)
@@ -167,13 +167,13 @@ uint32_t lastRender = 0;
 uint32_t sdEpoch = 0;  // Incremented whenever the SD card is reloaded (thumbnails may change)
 // AMOLED protection: dim the display after inactivity
 uint32_t lastInteract = 0;
-uint8_t dimStage = 0;        // 0 despierto, 1 atenuado (90s), 2 casi apagado (5min)
+uint8_t dimStage = 0;        // 0 awake, 1 dimmed (90 s), 2 nearly off (5 min)
 bool swallowGesture = false; // The touch that wakes the display must not trigger an action
 uint32_t holdStart = 0;     // Long press on the pet
 uint32_t confirmUntil = 0;  // 'Release?' dialog remains active until this millis() deadline
-uint8_t choiceKind = 0;     // dialogo de decision: 0 ninguno, 1 evolucion, 2 despedida
+uint8_t choiceKind = 0;     // Decision dialog: 0 none, 1 evolution, 2 farewell
 uint32_t choiceUntil = 0;   // Dialog closes automatically at this millis() deadline
-int16_t tX0, tY0, tXl, tYl; // gesto en curso (inicio y ultima posicion)
+int16_t tX0, tY0, tXl, tYl; // Gesture in progress (start and last position)
 uint32_t tStart = 0;
 bool holdFired = false;
 
@@ -264,7 +264,7 @@ void setup() {
     // state, breaking the streak, age, and scene clock. Seed from the last time seen,
     // if that value is later, so time never moves backward. Time elapsed while powered off
     // is still lost (without an RTC there is no way to recover it), but the saved state stays consistent.
-    // igual (sin RTC no hay forma de saberlos), pero nada se descuadra.
+    // as well (without an RTC there is no way to know them), but nothing becomes inconsistent.
     uint32_t seed = 1767225600UL;             // RTC virgen de verdad
     uint32_t seen = pet.savedEpoch();         // Use the NVS instance that pet has already opened
     if (seen > seed) seed = seen;
@@ -541,13 +541,13 @@ void handleSerial() {
     pet.startRunaway();
     Serial.println("DONE");
   } else if (line == "BEEP") {
-    sfxPlay(SFX_HATCH);  // prueba de audio
+    sfxPlay(SFX_HATCH);  // Audio test
     Serial.println("DONE");
   } else if (line == "ABANDON") {
     pet.dbgRunawayReady();  // Force the 'ready to run away' state (button test)
     Serial.println("DONE");
   } else if (line == "WIPE") {
-    pet.factoryReset();     // borra NVS y reinicia -> partida nueva (eleccion de inicial)
+    pet.factoryReset();     // Clear NVS and reboot -> new game (starter selection)
     Serial.println("DONE");
     delay(100);
     ESP.restart();
@@ -578,7 +578,7 @@ void handleSerial() {
   }
 }
 
-// ---------- entrada tactil ----------
+// ---------- Touch input ----------
 
 bool inPetZone(int16_t x, int16_t y) {
   return x > 110 && x < 356 && y > 95 && y < 310;
@@ -625,7 +625,7 @@ void handleTouch() {
     swallowGesture = (dimStage > 0) || screenOff;  // If the display was dark, only wake it
     screenOff = false;
     wakeUI();
-  } else if (pressed) {  // sigue apoyado
+  } else if (pressed) {  // Finger is still down
     tXl = x;
     tYl = y;
     // Long press without moving on the pet -> show the release dialog
@@ -748,25 +748,25 @@ void onTap(int16_t x, int16_t y) {
   }
   if (choiceKind) {          // Decision dialog: action button (top) / keep button (bottom)
     bool b1 = (x >= 93 && x <= 373 && y >= 206 && y <= 258);  // accion
-    bool b2 = (x >= 93 && x <= 373 && y >= 268 && y <= 320);  // mantener / quedaros
-    if (choiceKind == 1) {                 // evolucion
+    bool b2 = (x >= 93 && x <= 373 && y >= 268 && y <= 320);  // Keep / stay
+    if (choiceKind == 1) {                 // Evolution
       if (b1) { int16_t old = pet.speciesId; pet.evolve(); evoPmd.load(old, pet.shiny); }
       else if (b2) pet.declineEvolve();
-    } else if (choiceKind == 2) {          // despedida
+    } else if (choiceKind == 2) {          // Farewell
       if (b1) pet.startFarewell();
       else if (b2) pet.declineFarewell();
     }
     choiceKind = 0;
     return;
   }
-  if (confirmUntil) {        // dialogo "soltar?": SI / NO
+  if (confirmUntil) {        // Release dialog: YES / NO
     if (timeLeft(confirmUntil) && x >= 118 && x <= 218 && y >= 252 && y <= 304) {
       pet.release();
     }
     confirmUntil = 0;
     return;
   }
-  if (feedMenuUntil) {       // selector de comida
+  if (feedMenuUntil) {       // Food selector
     if (timeLeft(feedMenuUntil) && y >= 288 && y <= 352 && x >= 101 && x <= 365) {
       int item = (x - 101) / 66;
       if (item == 3) pet.feedCandy();
@@ -787,7 +787,7 @@ void onTap(int16_t x, int16_t y) {
     choiceKind = 1; choiceUntil = millis() + 12000;
     return;
   }
-  // botones de final (mismo recuadro): escapada directa; despedida abre dialogo
+  // End-state buttons (same box): runaway is direct; farewell opens a dialog
   if (x >= FAR_BTN_X && x <= FAR_BTN_X + FAR_BTN_W &&
       y >= FAR_BTN_Y && y <= FAR_BTN_Y + FAR_BTN_H) {
     if (pet.canRunawayNow()) { pet.startRunaway(); return; }
@@ -818,7 +818,7 @@ void onTap(int16_t x, int16_t y) {
   }
 }
 
-// ---------- render ----------
+// ---------- Rendering ----------
 
 bool gNight = false;  // Use real nighttime (clock) or sleep state; render() sets this flag
 uint16_t inkColor() { return gNight ? UI_INK_NIGHT : UI_INK; }
@@ -844,12 +844,12 @@ int sceneHour() {
 
 // Daytime ground color for each biome (at night it blends toward the night blue)
 static const uint16_t BIOME_SOIL[6] = {
-  C565(0x7e, 0xc0, 0x7f),  // 0 pradera
-  C565(0xdc, 0xca, 0x94),  // 1 playa (arena)
-  C565(0x4f, 0x8a, 0x55),  // 2 bosque
-  C565(0x8a, 0x55, 0x44),  // 3 volcan
-  C565(0xa8, 0x90, 0x6a),  // 4 montana
-  C565(0xe6, 0xee, 0xf5),  // 5 nieve
+  C565(0x7e, 0xc0, 0x7f),  // 0 meadow
+  C565(0xdc, 0xca, 0x94),  // 1 beach (sand)
+  C565(0x4f, 0x8a, 0x55),  // 2 forest
+  C565(0x8a, 0x55, 0x44),  // 3 volcano
+  C565(0xa8, 0x90, 0x6a),  // 4 mountain
+  C565(0xe6, 0xee, 0xf5),  // 5 snow
 };
 
 void drawClouds(uint32_t now, uint16_t col) {
@@ -867,10 +867,10 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
   uint16_t top, bot;
   if (night)            { top = C565(0x0c, 0x12, 0x24); bot = C565(0x1e, 0x26, 0x46); }
   else if (h < 8)       { top = C565(0xd1, 0x6a, 0x86); bot = C565(0xf3, 0xb8, 0x7c); }  // amanecer
-  else if (h < 18)      { top = C565(0x8f, 0xc8, 0xea); bot = C565(0xdc, 0xee, 0xe6); }  // dia
+  else if (h < 18)      { top = C565(0x8f, 0xc8, 0xea); bot = C565(0xdc, 0xee, 0xe6); }  // Day
   else                  { top = C565(0xc7, 0x5a, 0x4a); bot = C565(0xf0, 0xae, 0x64); }  // atardecer
 
-  // cielo en bandas
+  // Banded sky
   for (int y = 0; y < HORIZON; y += 8)
     gfx->fillRect(0, y, 466, 8, lerp565(top, bot, y, HORIZON));
 
@@ -900,34 +900,34 @@ void drawScene(uint8_t biome, uint32_t now, bool night) {
     }
   }
 
-  // suelo
+  // Ground
   gfx->fillRect(0, HORIZON, 466, 466 - HORIZON, soil);
   uint16_t hill = lerp565(soil, night ? C565(0x0c, 0x12, 0x24) : C565(0xff, 0xff, 0xff), 3, 16);
   gfx->fillRoundRect(-60, HORIZON - 14, 586, 60, 30, hill);
 
   // Biome details
   uint16_t dk = lerp565(soil, C565(0x10, 0x18, 0x20), night ? 11 : 7, 16);
-  if (biome == 2) {  // bosque: coniferas en silueta
+  if (biome == 2) {  // Forest: conifer silhouettes
     for (int tx : { 60, 150, 360, 416 }) {
       gfx->fillTriangle(tx, HORIZON - 46, tx - 16, HORIZON, tx + 16, HORIZON, dk);
       gfx->fillTriangle(tx, HORIZON - 60, tx - 12, HORIZON - 28, tx + 12, HORIZON - 28, dk);
     }
-  } else if (biome == 3) {  // volcan: rocas y brasas
+  } else if (biome == 3) {  // Volcano: rocks and embers
     gfx->fillTriangle(70, HORIZON, 40, HORIZON + 30, 100, HORIZON + 30, dk);
     gfx->fillTriangle(400, HORIZON + 4, 372, HORIZON + 30, 430, HORIZON + 30, dk);
     if (!night)
       for (int e = 0; e < 4; e++)
         gfx->fillRect(120 + e * 70, HORIZON + 8 + (e % 2) * 6, 4, 4, C565(0xff, 0x9b, 0x3a));
-  } else if (biome == 4) {  // montana: cumbres al fondo
+  } else if (biome == 4) {  // Mountain: distant peaks
     gfx->fillTriangle(140, HORIZON - 50, 60, HORIZON, 220, HORIZON, dk);
     gfx->fillTriangle(330, HORIZON - 38, 250, HORIZON, 410, HORIZON, dk);
-  } else if (biome == 5 && !night) {  // nieve: copos cayendo
+  } else if (biome == 5 && !night) {  // Snow: falling flakes
     for (int f = 0; f < 10; f++) {
       int fx = (f * 53 + now / 40) % 466;
       int fy = (f * 90 + now / 18) % HORIZON;
       gfx->fillRect(fx, fy, 3, 3, UI_WHITE);
     }
-  } else if (biome == 0) {  // pradera: matas de hierba
+  } else if (biome == 0) {  // Meadow: grass tufts
     for (int gx : { 80, 175, 300, 395 })
       for (int b = -1; b <= 1; b++)
         gfx->fillRect(gx + b * 5, HORIZON + 6, 2, 8 + (b == 0 ? 4 : 0), dk);
@@ -1069,7 +1069,7 @@ int centerX(const char *s, uint8_t size) { return CX - textW(s, size) / 2; }
 // Redrawing thickens the stroke without distorting the glyph. Tested on hardware by
 // usakomint, who compared both options in Japanese.
 // The nickname keyboard uses the Latin alphabet only (intentionally), so
-// aqui nunca hay CJK y no hace falta engordar nada.
+// there is never any CJK here, so no stroke thickening is needed.
 void printT(char c) { gfx->print(c); }
 
 void printT(const char *s) {
@@ -1209,8 +1209,8 @@ bool render() {
     drawButtons();
     drawCelebration();
     if (pet.wantEvolveButton()) drawEvolveButton();        // CTA rojo: evolucionar
-    else if (pet.canRunawayNow()) drawRunawayButton();     // CTA sombrio: escapada (abandono)
-    else if (pet.wantFarewellButton()) drawFarewellButton();  // CTA dorado: despedida
+    else if (pet.canRunawayNow()) drawRunawayButton();     // Dark CTA: runaway (neglect)
+    else if (pet.wantFarewellButton()) drawFarewellButton();  // Gold CTA: farewell
   }
 
   if (pet.sleeping) {
@@ -1220,7 +1220,7 @@ bool render() {
     printT("Zz");
   }
 
-  // selector de comida
+  // Food selector
   if (feedMenuUntil) {
     if (!timeLeft(feedMenuUntil)) {
       feedMenuUntil = 0;
@@ -1244,7 +1244,7 @@ bool render() {
       // 48 instead of 28: the buffer was sized when every string used one byte
       // per character. With a UTF-8 row, "%s 놓아줄까요?" plus the name exceeds
       // 28 bytes and snprintf would cut through a 3-byte sequence, corrupting the text.
-      // fuente ya no sabe dibujar.
+      // font can no longer draw it.
       char q[48];
       snprintf(q, sizeof(q), T(S_RELEASE_FMT), dexName(pet.speciesId));
       gfx->setTextColor(UI_INK);
@@ -1261,7 +1261,7 @@ bool render() {
     }
   }
 
-  // dialogo de decision (evolucionar/mantener, despedirse/quedaros)
+  // Decision dialog (evolve/keep, say goodbye/stay)
   if (choiceKind) {
     if (!timeLeft(choiceUntil)) choiceKind = 0;
     else drawChoiceDialog();
@@ -1325,7 +1325,7 @@ void stepGame() {
   // advanced once per frame and the game speed changed with render time,
   // which depends on the size of the loaded sprite. With Charizard, the ball fell more slowly
   // than with Diglett, so records were not comparable across species.
-  // Diglett, asi que el record no era comparable entre especies.
+  // Diglett, so records were not comparable between species.
   float k = lastGameStep ? (now - lastGameStep) / 85.0f : 1.0f;
   if (k > 3.0f) k = 3.0f;  // Unusually late frame: do not make a huge jump
   lastGameStep = now;
@@ -1348,7 +1348,7 @@ void stepGame() {
     ballX = CX + nx * 205;
     ballY = CY + ny * 205;
   }
-  if (ballY > 384) {  // al suelo
+  if (ballY > 384) {  // Ground
     if (++gameMisses >= 3) {
       gameNewHi = (gameScore > pet.gameHi);
       pet.playResult(gameScore);  // Update the record and increase happiness
@@ -1645,7 +1645,7 @@ void drawClockBtn(int x, int y, const char *l) {
 // Language pills centered on Y; fill the active one
 #define LANG_PILL_Y 296
 #define LANG_PILL_H 30
-#define LANG_PILL_X 336          // pildora de idioma (cicla LANG_COUNT al tocar)
+#define LANG_PILL_X 336          // Language pill (cycles through LANG_COUNT when tapped)
 #define LANG_PILL_W 96
 static const char *const LANG_CODES[LANG_COUNT] = { "ES", "EN", "FR", "DE", "IT", "PT", "JA", "KO" };
 
@@ -1725,10 +1725,10 @@ void clockTap(int16_t x, int16_t y) {
   if (y >= LANG_PILL_Y && y <= LANG_PILL_Y + LANG_PILL_H) {
     if (x >= 34 && x < 130) {                  // interruptor de sonido
       audioSetEnabled(!audioEnabled());
-      if (audioEnabled()) sfxPlay(SFX_TAP);    // confirma al encender
+      if (audioEnabled()) sfxPlay(SFX_TAP);    // Confirm on power-on
       return;
     }
-    if (x >= LANG_PILL_X && x < LANG_PILL_X + LANG_PILL_W) {  // cicla idioma
+    if (x >= LANG_PILL_X && x < LANG_PILL_X + LANG_PILL_W) {  // Cycle language
       setLang((Lang)((gLang + 1) % LANG_COUNT));
       applyLangFont();  // The font changes with the language
       sfxPlay(SFX_TAP);
@@ -1752,7 +1752,7 @@ void drawStreakBadge() {
   printT(s);
 }
 
-// banner temporal: medalla nueva o hito de racha
+// Temporary banner: new medal or streak milestone
 void drawCelebration() {
   const char *l1 = nullptr, *l2 = nullptr;
   // 32 instead of 20: "%u にちれんぞく！" already exceeds 20 bytes with a single digit, and snprintf
@@ -1790,7 +1790,7 @@ void drawMedalBadge(int x, int y, int i) {
   printT(medalLabel(i));
 }
 
-// pagina 0: perfil (retrato grande, identidad, racha, vinculo, baya)
+// Page 0: profile (large portrait, identity, streak, bond, berry)
 void renderCardProfile() {
   const DexEntry &d = DEX_TBL[pet.speciesId];
   const char *nm = pet.nick[0] ? pet.nick : dexName(pet.speciesId);
@@ -1851,7 +1851,7 @@ void renderCardProfile() {
   printT(T(S_RENAME_HINT));
 }
 
-// pagina 1: combate (4 barras + boton de entrenar)
+// Page 1: combat (4 bars + train button)
 void renderCardStats() {
   gfx->setTextColor(UI_INK);
   setSize(3);
@@ -1910,7 +1910,7 @@ void renderCardProgress() {
   setCur(centerX(T(S_PROGRESS), 3), 44);
   printT(T(S_PROGRESS));
 
-  // nivel grande
+  // Large level display
   char lv[10];
   snprintf(lv, sizeof(lv), T(S_LVL_FMT), pet.level());
   setSize(5);
@@ -1930,7 +1930,7 @@ void renderCardProgress() {
   setCur(centerX(nx, 2), by + 32);
   printT(nx);
 
-  // estado de evolucion
+  // Evolution status
   gfx->setTextColor(UI_TRACK);
   setCur(centerX(T(S_EVO_LABEL), 2), 230);
   printT(T(S_EVO_LABEL));
@@ -2050,7 +2050,7 @@ void keyboardTap(int16_t x, int16_t y) {
   }
 }
 
-// ---------- galeria pokedex ----------
+// ---------- Pokédex gallery ----------
 
 #define GAL_X 73
 #define GAL_Y 84
@@ -2083,7 +2083,7 @@ void renderGallery() {
     snprintf(head, sizeof(head), "N.%03d %s%s", galleryDetail,
              pet.isShinyRegistered(galleryDetail) ? "*" : "", reg ? dexName(galleryDetail) : "???");
     gfx->setTextColor(reg ? d.accent : UI_INK);
-    // auto-encoge nombres largos (no caben a t3), midiendo en vez de contar
+    // Auto-shrink long names (they do not fit at size 3); measure instead of counting
     // bytes; 13 characters at size 3 use the same 234 px as before.
     setSize(3);
     int gts = (textW(head, 3) <= 234) ? 3 : 2;
@@ -2141,7 +2141,7 @@ void renderGallery() {
       }
     }
   }
-  // puntos de pagina
+  // Page indicators
   for (int i = 0; i < 10; i++) {
     if (i == galleryPage) gfx->fillCircle(170 + i * 14, 436, 4, UI_INK);
     else gfx->drawCircle(170 + i * 14, 436, 3, UI_INK);
@@ -2255,7 +2255,7 @@ void drawCeremony() {
     else gfx->fillRect(px, py, 4, 4, (i % 2) ? C565(0xff, 0xe7, 0x9f) : C565(0xff, 0x9a, 0xc0));
   }
 
-  if (t < 0.45f) {                         // reverencia / pose de despedida
+  if (t < 0.45f) {                         // Bow / farewell pose
     act = pmd.has(PMD_POSE) ? PMD_POSE : (pmd.has(PMD_NOD) ? PMD_NOD : PMD_IDLE);
   } else {                                 // Moves away to the right
     act = pmd.has(PMD_WALKR) ? PMD_WALKR : PMD_IDLE;
@@ -2266,14 +2266,14 @@ void drawCeremony() {
     drawMap(SPR_HEART, 32, x + 50, y - 190, 2, false);
 }
 
-// dialogo de decision (2 botones apilados): evolucionar/mantener o despedirse/quedaros
+// Decision dialog (two stacked buttons): evolve/keep or farewell/stay
 void drawChoiceDialog() {
   const char *q, *o1, *o2;
   uint16_t c1, c2, t1, t2;
-  if (choiceKind == 1) {  // evolucion
+  if (choiceKind == 1) {  // Evolution
     q = T(S_EVO_Q); o1 = T(S_EVO_TAP); o2 = T(S_EVO_KEEP);
     c1 = UI_BAR_BAD; t1 = UI_WHITE; c2 = UI_TRACK; t2 = UI_INK;
-  } else {                // despedida
+  } else {                // Farewell
     q = T(S_FAR_Q); o1 = T(S_FAR_GO); o2 = T(S_FAR_STAY);
     c1 = UI_BAR_WARN; t1 = UI_INK; c2 = UI_BAR_OK; t2 = UI_WHITE;
   }
@@ -2287,7 +2287,7 @@ void drawChoiceDialog() {
   gfx->setTextColor(t1);
   setCur(centerX(o1, 2), 224);
   printT(o1);
-  gfx->fillRoundRect(93, 268, 280, 52, 12, c2);     // boton mantener/quedaros
+  gfx->fillRoundRect(93, 268, 280, 52, 12, c2);     // Keep / stay button
   gfx->setTextColor(t2);
   setCur(centerX(o2, 2), 286);
   printT(o2);
@@ -2308,7 +2308,7 @@ void drawEvolveButton() {
   printT(t);
 }
 
-// boton-CTA dorado de despedida: "<nombre> quiere decirte algo..."
+// Gold farewell CTA button: "<name> wants to tell you something..."
 void drawFarewellButton() {
   uint32_t now = millis();
   int p = (int)(4 * sinf(now * 0.005f));
@@ -2325,7 +2325,7 @@ void drawFarewellButton() {
 }
 
 // Dark runaway call-to-action button for neglect: "<name> feels abandoned..."
-// (final triste: azul-gris oscuro, latido lento y apagado)
+// (sad ending: dark blue-gray, slow and fading heartbeat)
 void drawRunawayButton() {
   uint32_t now = millis();
   int p = (int)(3 * sinf(now * 0.003f));
@@ -2436,7 +2436,7 @@ void drawPet() {
   if (pet.showHeart()) drawMap(SPR_HEART, 32, x + 20 * s, y - 2 * s, 2, false);
 }
 
-// ---------- escena de bano ----------
+// ---------- Bath scene ----------
 
 void startBath() {
   if (pet.isEgg() || pet.sleeping || pet.ceremony || bathUntil) return;
@@ -2458,7 +2458,7 @@ void drawBath() {
     if (bathPending) {
       bathPending = false;
       pet.clean();
-      // pose de alegria al quedar limpio
+      // Happy pose after a bath
       if (pmd.has(PMD_POSE)) {
         beh.mode = 2;
         beh.act = PMD_POSE;
@@ -2549,7 +2549,7 @@ void behNext() {
     beh.until = now + 15000;
   } else if (r < 60) {
     // Random gesture among the available actions
-    // (Hop fuera: salta demasiado alto; Sit fuera: mira hacia atras)
+    // (Hop omitted: it jumps too high; Sit omitted: it looks backward)
     static const uint8_t flair[] = { PMD_POSE, PMD_NOD, PMD_BREATH };
     uint8_t pick[3], n = 0;
     for (uint8_t f : flair)
@@ -2563,7 +2563,7 @@ void behNext() {
     beh.mode = 0;
     beh.until = now + 2000 + random(3000);
   } else {
-    beh.mode = 0;  // mirar al frente
+    beh.mode = 0;  // Look forward
     beh.until = now + 2000 + random(3000);
   }
 }
