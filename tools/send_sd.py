@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Envia los sprites empaquetados a la SD de la placa por USB.
+"""Send the packed sprites to the board's SD card over USB.
 
   python3 tools/send_sd.py                  # send tools/sdcard/mons/*.bin
   python3 tools/send_sd.py --port /dev/cu.usbmodem101
