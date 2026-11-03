@@ -1296,10 +1296,10 @@ void respawnBall() {
 
 void gameTap(int16_t x, int16_t y) {
   if (gameOverUntil) return;
-  if (y < 72) {  // tocar la cabecera = abandonar sin premio
-    gameOpen = false;
-    return;
-  }
+
+  // Das Minispiel kann nicht mehr durch Beruehren der Kopfzeile verlassen
+  // werden. Es endet ausschliesslich nach drei verlorenen Leben.
+  // Beruehrungen ausserhalb der Trefferzone bleiben wirkungslos.
   float dx = ballX - x, dy = ballY - y;
   if (dx * dx + dy * dy < 74 * 74) {  // toque a la bola!
     gameScore++;

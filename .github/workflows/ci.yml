@@ -27,11 +27,19 @@ jobs:
       - name: Install libraries
         run: arduino-cli lib install "GFX Library for Arduino" SensorLib XPowersLib U8g2
 
+      # Arduino CLI exige que el archivo .ino principal tenga el mismo nombre
+      # que el directorio del sketch. El repositorio se llama distinto,
+      # por eso compilamos una copia temporal en build/TamaPoke/.
+      - name: Prepare sketch folder
+        run: |
+          mkdir -p build/TamaPoke
+          cp *.ino *.cpp *.c *.h build/TamaPoke/
+
       - name: Compile
         run: >
           arduino-cli compile --warnings=all
           --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
-          .
+          build/TamaPoke
 
   generated:
     name: Generated headers up to date
