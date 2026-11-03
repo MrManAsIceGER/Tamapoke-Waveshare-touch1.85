@@ -177,6 +177,10 @@ uint32_t tStart = 0;
 bool holdFired = false;
 
 void setup() {
+  // GPIO7 (BAT Control) sofort setzen, damit die Batterie-Versorgung
+  // waehrend der gesamten Initialisierung gehalten wird.
+  pwrSetup();
+
   Serial.setRxBufferSize(8192);  // la transferencia a SD llega en bloques de 2 KB
   Serial.begin(115200);
   // CRITICO: sin esto, Serial.print BLOQUEA el juego cuando no hay un
@@ -252,7 +256,6 @@ void setup() {
   // reloj real: aplica el tiempo que estuvo apagado
   rtcBegin();
   batBegin();
-  pwrSetup();
   uint32_t e = rtcEpoch();
   if (e == 0) {
     // Sin pila de respaldo, el PCF85063 pierde la hora al cortar la
@@ -321,14 +324,19 @@ void loop() {
   handleSerial();
   ensureMon();
 
-  // pulsacion corta del PWR: pantalla on/off
-  static uint32_t lastPwr = 0;
-  if (now - lastPwr > 250) {
-    lastPwr = now;
-    if (pwrShortPressed()) {
-      screenOff = !screenOff;
-      if (!screenOff) wakeUI();
-    }
+  // PWR: kurzer Druck schaltet das Display, 4 s halten schaltet
+  // die Batterie-Versorgung ab. Bei USB-Versorgung bleibt das Board ggf.
+  // weiterhin ueber USB gespeist.
+  const PwrButtonEvent pwrEvent = pwrPoll();
+  if (pwrEvent == PWR_EVENT_LONG) {
+    pet.flushSave();
+    screenOff = true;
+    Set_Backlight(0);
+    audioSetIdle(true);
+    batPowerOff();
+  } else if (pwrEvent == PWR_EVENT_SHORT) {
+    screenOff = !screenOff;
+    if (!screenOff) wakeUI();
   }
 
   updateBrightness(now);
