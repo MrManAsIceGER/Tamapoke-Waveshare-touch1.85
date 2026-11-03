@@ -5,7 +5,7 @@ constexpr uint8_t TCA9554_ADDRESS = 0x20;
 constexpr uint8_t REG_INPUT       = 0x00;
 constexpr uint8_t REG_OUTPUT      = 0x01;
 constexpr uint8_t REG_CONFIG      = 0x03;
-constexpr uint8_t RESET_PINS_MASK = 0x03; // EXIO1 Touch-Reset, EXIO2 LCD-Reset
+constexpr uint8_t RESET_PINS_MASK = 0x03; // EXIO1 touch reset, EXIO2 LCD reset
 
 TwoWire *gWire = nullptr;
 uint8_t gOutputState = 0xFF;
@@ -47,11 +47,11 @@ bool tca9554Begin(TwoWire &wire)
         return false;
     }
 
-    // Reset-Ausgaenge erst auf HIGH setzen, bevor sie als Ausgaenge aktiviert werden.
+    // Set reset outputs HIGH before configuring them as outputs.
     output |= RESET_PINS_MASK;
     if (!writeRegister(REG_OUTPUT, output)) return false;
 
-    // Nur EXIO1 und EXIO2 als Ausgaenge konfigurieren. Andere Expander-Pins bleiben unveraendert.
+    // Configure only EXIO1 and EXIO2 as outputs. Leave all other expander pins unchanged.
     config &= (uint8_t)~RESET_PINS_MASK;
     if (!writeRegister(REG_CONFIG, config)) return false;
 

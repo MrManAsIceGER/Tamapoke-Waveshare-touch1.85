@@ -30,7 +30,7 @@ uint32_t rtcEpoch() {
 
   RTC_DateTime t = rtc.getDateTime();
 
-  // Plausibilitätsprüfung der gespeicherten Uhrzeit
+  // Plausibility check for the stored time
   if (t.getYear() < 2025 || t.getYear() > 2120) {
     return 0;
   }
@@ -44,8 +44,8 @@ uint32_t rtcEpoch() {
   tmv.tm_min  = t.getMinute();
   tmv.tm_sec  = t.getSecond();
 
-  // Die RTC wird in UTC geführt.
-  // Das vermeidet Abweichungen durch Sommer-/Winterzeit.
+  // The RTC uses UTC.
+  // This avoids daylight-saving-time changes.
   time_t e = mktime(&tmv);
 
   return e > 0 ? (uint32_t)e : 0;
@@ -72,57 +72,153 @@ void rtcSetEpoch(uint32_t e) {
 }
 
 // ------------------------------------------------------------
-// Akku- und Ladeverwaltung
+// Battery and charging management
 //
-// Das Original verwendet einen AXP2101.
-// Dieser ist auf dem ESP32-S3-Touch-LCD-1.85 Rev 2.0
-// nicht vorhanden.
-//
-// Deshalb keine AXP2101-I2C-Zugriffe und keine erfundenen
-// Akku-Spannungs- oder Ladezustandswerte.
+// Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0:
+// BAT_ADC is connected to GPIO8.
+// 200 kOhm / 100 kOhm voltage divider: VBAT = VADC * 3.
+// The ADC provides only a voltage-based state-of-charge estimate.
+// ETA6098-STAT drives the separate charge LED and is not
+// connected to the ESP32; software charging status is therefore unavailable.
 // ------------------------------------------------------------
 
-bool batBegin() {
-  Serial.println(
-    "Akku-Monitor: keine kompatible Messhardware vorhanden"
-  );
+static bool batReady = false;
+static bool batHasSample = false;
+static uint32_t batLastSampleMs = 0;
+static uint32_t batPollIntervalMs = 2000;
+static uint16_t batLastMv = 0;
+static int batLastPercent = -1;
 
-  return false;
+static constexpr uint8_t BAT_ADC_SAMPLES = 8;
+static constexpr uint16_t BAT_PRESENT_MIN_MV = 1500;
+static constexpr uint16_t BAT_ADC_DIVIDER = 3;
+
+struct BatteryCurvePoint {
+  uint16_t millivolts;
+  uint8_t percent;
+};
+
+// Approximate 1-cell Li-ion open-circuit curve. Under load and while charging,
+// the displayed estimate may differ from the actual capacity.
+static const BatteryCurvePoint BATTERY_CURVE[] = {
+  { 3300,   0 },
+  { 3500,   5 },
+  { 3600,  10 },
+  { 3700,  20 },
+  { 3750,  30 },
+  { 3800,  40 },
+  { 3850,  50 },
+  { 3900,  60 },
+  { 4000,  75 },
+  { 4100,  90 },
+  { 4200, 100 }
+};
+
+static int batEstimatePercent(uint16_t millivolts) {
+  constexpr size_t POINT_COUNT =
+      sizeof(BATTERY_CURVE) / sizeof(BATTERY_CURVE[0]);
+
+  if (millivolts <= BATTERY_CURVE[0].millivolts) return 0;
+  if (millivolts >= BATTERY_CURVE[POINT_COUNT - 1].millivolts) return 100;
+
+  for (size_t i = 1; i < POINT_COUNT; ++i) {
+    const BatteryCurvePoint &lo = BATTERY_CURVE[i - 1];
+    const BatteryCurvePoint &hi = BATTERY_CURVE[i];
+
+    if (millivolts <= hi.millivolts) {
+      const uint32_t spanMv = hi.millivolts - lo.millivolts;
+      const uint32_t offsetMv = millivolts - lo.millivolts;
+      const uint32_t spanPct = hi.percent - lo.percent;
+      return lo.percent + (int)((offsetMv * spanPct + spanMv / 2) / spanMv);
+    }
+  }
+
+  return 100;
+}
+
+static void batSampleVoltage() {
+  uint32_t adcMvSum = 0;
+
+  for (uint8_t i = 0; i < BAT_ADC_SAMPLES; ++i) {
+    adcMvSum += analogReadMilliVolts(BAT_ADC_PIN);
+  }
+
+  const uint32_t adcMv = (adcMvSum + BAT_ADC_SAMPLES / 2) / BAT_ADC_SAMPLES;
+  const uint32_t batteryMv = adcMv * BAT_ADC_DIVIDER;
+
+  batLastSampleMs = millis();
+  batHasSample = true;
+
+  // Without a connected battery, the lower resistor pulls BAT_ADC
+  // close to 0 V. The battery icon is then hidden as before.
+  if (batteryMv < BAT_PRESENT_MIN_MV) {
+    batLastMv = 0;
+    batLastPercent = -1;
+    return;
+  }
+
+  batLastMv = batteryMv > UINT16_MAX ? UINT16_MAX : (uint16_t)batteryMv;
+  batLastPercent = batEstimatePercent(batLastMv);
+}
+
+static void batUpdateIfDue() {
+  if (!batReady) return;
+
+  const uint32_t now = millis();
+  if (!batHasSample || now - batLastSampleMs >= batPollIntervalMs) {
+    batSampleVoltage();
+  }
+}
+
+bool batBegin() {
+  pinMode(BAT_ADC_PIN, INPUT);
+  analogReadResolution(12);
+  analogSetPinAttenuation(BAT_ADC_PIN, ADC_11db);
+
+  batReady = true;
+  batHasSample = false;
+  batSampleVoltage();
+
+  Serial.printf("[BAT] BAT_ADC GPIO%d bereit: %d mV, %d%%\n",
+                BAT_ADC_PIN, batLastMv, batLastPercent);
+  return true;
 }
 
 void pmuEnablePanel() {
-  // Nicht benötigt:
-  // Die Displayversorgung wird auf diesem Board nicht
-  // über den BLDO1-Ausgang eines AXP2101 geschaltet.
+  // Not required: the panel supply is not controlled by an AXP2101
+  // or a separate PMU output.
 }
 
 void batSetPollMs(uint32_t ms) {
-  // Keine Akku-Messung vorhanden.
-  (void)ms;
+  // At least 250 ms between samples, so ADC reads never flood the render loop.
+  batPollIntervalMs = (ms < 250) ? 250 : ms;
 }
 
 int batPercent() {
-  return -1;
+  batUpdateIfDue();
+  return batLastPercent;
 }
 
 bool batCharging() {
+  // ETA6098-STAT is connected only to the hardware charge LED.
+  // A software charging icon would be guesswork without an additional signal wire.
   return false;
 }
 
 int batMillivolts() {
-  return 0;
+  batUpdateIfDue();
+  return batLastPercent >= 0 ? batLastMv : 0;
 }
 
 bool batShouldShutdown() {
-  // Ohne zuverlässige Spannungsmessung darf das Spiel
-  // nicht aufgrund eines erfundenen Akkuwertes abschalten.
+  // No automatic hard shutdown based on the estimated
+  // cell voltage: a validated threshold and USB detection would be required.
   return false;
 }
 
 bool usbPresent() {
-  // Konservativer Rückgabewert:
-  // Verhindert, dass die vorhandene Spiel-Logik wegen
-  // eines nicht messbaren USB-Zustands abschaltet.
+  // Conservative return value to prevent an unintended shutdown,
+  // since the board does not provide separate software USB detection.
   return true;
 }
 
@@ -131,15 +227,15 @@ bool usbPresentNow() {
 }
 
 // ------------------------------------------------------------
-// PWR-Taste / Batterie-Haltefunktion
+// PWR button / battery power hold
 //
 // Waveshare ESP32-S3-Touch-LCD-1.85:
-//   GPIO6 = Key BAT (PWR-Taste, aktiv LOW)
-//   GPIO7 = BAT Control (HIGH haelt die Batterie-Versorgung aktiv)
+// GPIO6 = Key BAT (PWR button, active LOW)
+// GPIO7 = BAT Control (HIGH keeps battery power enabled)
 //
-// Die Werte stammen aus dem offiziellen Board-Schaltplan. GPIO7 muss
-// moeglichst frueh auf HIGH gesetzt werden, damit das Board nach dem
-// Einschalten ueber PWR weiter mit Batteriespannung versorgt bleibt.
+// Values are taken from the official board schematic. GPIO7 must
+// be driven HIGH as early as possible so the board remains
+// powered from the battery after startup via PWR.
 // ------------------------------------------------------------
 
 static bool pwrReady = false;
@@ -157,7 +253,7 @@ static constexpr uint32_t PWR_SHORT_MIN_MS = 60;
 static constexpr uint32_t PWR_LONG_MS = 4000;
 
 void pwrSetup() {
-  // Erst die Stromversorgung halten, danach den Taster konfigurieren.
+  // Enable the power supply first, then configure the button.
   pinMode(BAT_CTRL_PIN, OUTPUT);
   digitalWrite(BAT_CTRL_PIN, HIGH);
 
@@ -166,7 +262,7 @@ void pwrSetup() {
   const bool pressed = (digitalRead(PWR_KEY_PIN) == LOW);
   pwrRawPressed = pressed;
   pwrStablePressed = pressed;
-  pwrIgnoreNextRelease = pressed;  // Einschalt-Druck nicht als Spielaktion werten
+  pwrIgnoreNextRelease = pressed;  // Do not treat the power-on press as a game action
   pwrLongReported = false;
   pwrShortPending = false;
   pwrLongPending = false;
@@ -212,8 +308,8 @@ static void pwrUpdateButton() {
     }
   }
 
-  // Lange Tastendruecke bereits waehrend des Haltens erkennen.
-  // Der Sonderfall eines beim Booten gehaltenen PWR-Tasters bleibt ignoriert.
+  // Detect long button presses while the button is still held.
+  // A PWR button held during boot is still ignored.
   if (pwrStablePressed && !pwrIgnoreNextRelease && !pwrLongReported &&
       now - pwrPressedAtMs >= PWR_LONG_MS) {
     pwrLongReported = true;

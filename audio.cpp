@@ -63,8 +63,8 @@ static const SfxDef SFX[SFX_COUNT] = {
 static int16_t buf[256 * 2];
 
 static void updateAmplifierPower() {
-  // Auf dieser Hardware ist kein sicher belegter Enable-GPIO definiert.
-  // Der PCM5101 bleibt daher ohne GPIO-Schaltung aktiv.
+  // No confirmed enable GPIO is defined for this hardware.
+  // The PCM5101 therefore remains active without GPIO control.
   if (gAmpHold &&
       (int32_t)(gAmpHoldUntil - millis()) <= 0) {
     gAmpHold = false;
@@ -135,8 +135,8 @@ void audioBegin() {
   gReady = false;
 
   // ESP32 Arduino Core 3.3.12:
-  // I2SClass::setPins() liefert void, keinen bool-Wert.
-  // Deshalb darf das Ergebnis nicht mit ! ausgewertet werden.
+  // I2SClass::setPins() returns void, not a bool.
+  // Therefore, its result must not be tested with !.
   i2s.setPins(
     I2S_BCLK,
     I2S_LRCK,

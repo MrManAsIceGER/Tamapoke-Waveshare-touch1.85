@@ -20,7 +20,7 @@ static void drawSolidColor(uint16_t color)
             lineBuffer[i] = color;
         }
         LCD_addWindow(0, y, LCD_W - 1, y + 1, lineBuffer);
-        delay(5); // DMA-Puffer nicht ueberschreiben, bevor die Uebertragung beendet ist.
+        delay(5); delay(5); // Do not overwrite the DMA buffer before the transfer has completed.
     }
 }
 

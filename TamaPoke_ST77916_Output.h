@@ -5,12 +5,12 @@
 #include "Arduino_GFX_Library.h"
 
 /*
- * Ausgabeadapter fuer Arduino_Canvas.
+ * Output adapter for Arduino_Canvas.
  *
- * Arduino_Canvas zeichnet TamaPoke wie bisher in einen RGB565-Framebuffer.
- * Beim gfx->flush() ruft Arduino_Canvas draw16bitRGBBitmap() auf.
- * Dieser Adapter uebergibt den Frame in DMA-tauglichen Teilbildern an
- * den erfolgreich getesteten Waveshare-ST77916-Treiber.
+ * Arduino_Canvas continues to draw TamaPoke into an RGB565 framebuffer.
+ * During gfx->flush(), Arduino_Canvas calls draw16bitRGBBitmap().
+ * This adapter passes the frame to the Waveshare ST77916 driver in
+ * DMA-compatible chunks.
  */
 
 class TamaPoke_ST77916_Output : public Arduino_G {

@@ -2,9 +2,9 @@
 #pragma once
 #include <Arduino.h>
 
-// Sprite animado TPK1 (formato heredado, camino de respaldo). El proyecto usa
-// PMD/TPK2 (PmdMon) para todo; esta ruta queda inactiva si no hay NNN.bin en la SD.
-// Los datos indexados viven en PSRAM; la paleta es RGB565.
+// Legacy TPK1 animated sprite format (fallback path). The project uses
+// PMD/TPK2 (PmdMon) for all sprites; this path is inactive unless NNN.bin exists on the SD card.
+// Indexed data is stored in PSRAM; the palette uses RGB565.
 struct SdMon {
   bool loaded = false;
   uint16_t w = 0, h = 0, frames = 0, frameMs = 100;
@@ -17,7 +17,7 @@ struct SdMon {
   void unload();
 };
 
-// acciones de los sprites PMD (formato TPK2)
+// PMD sprite actions (TPK2 format)
 enum : uint8_t {
   PMD_IDLE = 0, PMD_WALKL, PMD_WALKR, PMD_SLEEP, PMD_EAT, PMD_HURT,
   PMD_ATTACK, PMD_POSE, PMD_HOP, PMD_NOD, PMD_BREATH, PMD_SIT,
@@ -31,7 +31,7 @@ struct PmdAct {
   const uint8_t *data = nullptr;
 };
 
-// sprite PMD multi-accion cargado de la SD a PSRAM
+// PMD multi-action sprite loaded from SD into PSRAM
 struct PmdMon {
   bool loaded = false;
   uint16_t palCount = 0;
@@ -46,7 +46,7 @@ struct PmdMon {
   }
 };
 
-// miniaturas de la galeria (thumbs.bin entero en PSRAM)
+// Gallery thumbnails (the complete thumbs.bin file is stored in PSRAM)
 struct SdThumbs {
   bool loaded = false;
   uint8_t *data = nullptr;

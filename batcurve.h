@@ -1,15 +1,15 @@
 #pragma once
 #include <stdint.h>
 
-// Bateria de una celda LiPo/Li-ion (cargada a 4,2 V, como configura el ejemplo de Waveshare): del
-// voltaje en reposo al porcentaje, y cuando apagar para no descargarla a fondo. Logica pura, con
-// tests en test/test_batcurve.cpp.
+// Single-cell LiPo/Li-ion battery (charged to 4.2 V, as configured by the Waveshare example): convert
+// resting voltage to a percentage and decide when to shut down to avoid deep discharge. Pure logic, with
+// tests in test/test_batcurve.cpp.
 
-#define BAT_CUTOFF_MV 3300     // por debajo de esto (en descarga) el firmware guarda y apaga
-#define BAT_CUTOFF_READS 3     // lecturas seguidas por debajo (ademas del tiempo, ver BatMonitor)
-#define BAT_HW_CUTOFF_MV 3100  // respaldo en el PMU (AXP2101, de 2600 a 3300 en pasos de 100)
+#define BAT_CUTOFF_MV 3300     // Below this voltage (while discharging), the firmware saves and shuts down
+#define BAT_CUTOFF_READS 3     // Required consecutive readings below the threshold (in addition to elapsed time; see BatMonitor)
+#define BAT_HW_CUTOFF_MV 3100  // PMU fallback (AXP2101, from 2600 to 3300 in steps of 100)
 
-// curva de descarga tipica de una celda LiPo, (mV, %) de mayor a menor
+// Typical single-cell LiPo discharge curve, (mV, %) from high to low
 struct BatPoint { int16_t mv; uint8_t pct; };
 static const BatPoint BAT_CURVE[] = {
   { 4200, 100 }, { 4150, 95 }, { 4110, 90 }, { 4080, 85 }, { 4020, 80 }, { 3980, 75 }, { 3950, 70 },
@@ -17,7 +17,7 @@ static const BatPoint BAT_CURVE[] = {
   { 3770, 30 }, { 3750, 25 }, { 3730, 20 }, { 3710, 15 }, { 3690, 10 }, { 3610, 5 }, { BAT_CUTOFF_MV, 0 },
 };
 
-// interpolacion lineal entre puntos; 100 por encima de 4,2 V y 0 en el apagado
+// Linear interpolation between points; 100 above 4.2 V and 0 at the shutdown threshold
 inline int batPercentFromMv(int mv) {
   const int n = sizeof(BAT_CURVE) / sizeof(BAT_CURVE[0]);
   if (mv >= BAT_CURVE[0].mv) return 100;
@@ -31,23 +31,23 @@ inline int batPercentFromMv(int mv) {
   return 0;
 }
 
-// Suaviza la tension (media movil exponencial, 1/4 por lectura), hace que el porcentaje mostrado solo
-// baje mientras dura la descarga (el pico de carga justo tras desenchufar, o un bache por carga, no lo
-// suben ni lo hacen bailar) y decide el apagado: la tension suavizada tiene que estar bajo el limite
-// durante BAT_CUTOFF_MS seguidos (y al menos BAT_CUTOFF_READS lecturas), no solo unas lecturas.
+// Smooth the voltage (exponential moving average, 1/4 per reading), make the displayed percentage only
+// decrease during discharge (a charging peak just after unplugging or a load dip does not
+// raise it or make it fluctuate), and decide when to shut down: smoothed voltage must remain below
+// the threshold for BAT_CUTOFF_MS continuously (and for at least BAT_CUTOFF_READS readings), not just a few samples.
 #define BAT_CUTOFF_MS 30000UL
-#define BAT_BOOT_GRACE_MS 30000UL  // tras arrancar no se apaga: la primera tension aun no dice nada
+#define BAT_BOOT_GRACE_MS 30000UL  // Do not shut down immediately after startup: the first voltage reading is not meaningful yet
 
 struct BatMonitor {
   int smoothMv = 0;
-  int pct = -1;            // ultimo porcentaje mostrado (-1 = aun sin lectura)
+  int pct = -1;            // Last displayed percentage (-1 = no reading yet)
   uint32_t lowSince = 0;
   uint8_t lowReads = 0;
 
   void reset() { smoothMv = 0; pct = -1; lowSince = 0; lowReads = 0; }
-  // limite superior del porcentaje al empezar la descarga (el que mostraba el PMU)
+  // Upper percentage limit at the start of discharge (the value previously shown by the PMU)
   void seed(int p) { if (pct < 0 && p >= 0) pct = p; }
-  // Una lectura en descarga (sin USB ni carga). Devuelve el porcentaje, -1 si no hubo lectura.
+  // One reading while discharging (no USB or charging). Returns the percentage, or -1 if unavailable.
   int sample(int mv, uint32_t now) {
     if (mv <= 0) { lowReads = 0; lowSince = 0; return -1; }
     smoothMv = smoothMv ? smoothMv + (mv - smoothMv) / 4 : mv;

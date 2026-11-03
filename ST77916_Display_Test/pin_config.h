@@ -19,7 +19,7 @@
  * 16 MB Flash
  * 8 MB PSRAM
  *
- * LCD-Reset und Touch-Reset werden über den TCA9554 gesteuert.
+ * LCD reset and touch reset are controlled through the TCA9554.
  */
 
 
@@ -41,14 +41,14 @@
 #define LCD_TE          18
 #define LCD_BL          5
 
-// LCD-Reset liegt auf TCA9554 EXIO2.
-// Kein direkter ESP32-GPIO.
+// LCD reset is connected to TCA9554 EXIO2.
+// No direct ESP32 GPIO connection.
 #define LCD_RESET       (-1)
 
 
 // ============================================================
 // TOUCH – CST816
-// Separater I2C-Bus
+// Separate I2C bus
 // ============================================================
 
 #define TP_IIC_SDA      1
@@ -56,7 +56,7 @@
 
 #define TP_INT          4
 
-// Touch-Reset liegt auf TCA9554 EXIO1.
+// Touch reset is connected to TCA9554 EXIO1.
 #define TP_RESET        (-1)
 
 #define TOUCH_ADDR      0x15
@@ -87,27 +87,27 @@
 
 
 // ============================================================
-// MICROSD / TF-KARTE – SDMMC 1-BIT
+// microSD / TF card – SDMMC 1-bit
 //
 // CLK  = GPIO14
 // CMD  = GPIO17
 // D0   = GPIO16
 //
-// GPIO17 ist CMD und nicht MOSI im SPI-Sinn.
-// In der 1-Bit-Konfiguration wird kein separater CS-Pin
-// benötigt.
+// GPIO17 is CMD, not MOSI in the SPI sense.
+// No separate CS pin is used in 1-bit mode.
+//
 // ============================================================
 
 #define SDMMC_CLK      14
 #define SDMMC_CMD      17
 #define SDMMC_D0       16
 
-// Kompatibilitätsnamen für vorhandenen Projektcode:
+// Compatibility names for existing project code:
 #define SD_SCLK        SDMMC_CLK
 #define SD_MOSI        SDMMC_CMD
 #define SD_MISO        SDMMC_D0
 
-// Kein direkter Chip-Select im SDMMC-1-Bit-Modus.
+// No direct chip select in SDMMC 1-bit mode.
 #define SD_CS          (-1)
 
 

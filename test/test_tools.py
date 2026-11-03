@@ -65,7 +65,7 @@ class TestDexData(unittest.TestCase):
             self.assertTrue(s.isascii(), f'slug no ASCII: {s}')
 
     def test_los_nombres_de_pantalla_son_ascii_en_mayusculas(self):
-        # la fuente GFX del firmware no tiene acentos ni minusculas
+        # The firmware GFX font has no accents or lowercase letters
         for num, slug, display, *_ in self.DEX:
             self.assertTrue(display.isascii(), f'{num} {display} no es ASCII')
             self.assertEqual(display, display.upper(), f'{num} {display} lleva minusculas')
@@ -119,10 +119,10 @@ class TestDexData(unittest.TestCase):
                 self.assertTrue(0 < v <= 255, f'stat fuera de rango en {self.byNum[num][2]}: {v}')
 
     def test_los_nombres_traducidos_cuadran_con_su_fuente(self):
-        # Los latinos se pintan con la fuente CP437 (un byte por caracter, sin
-        # minusculas en los nombres); el japones y el coreano con una fuente
-        # U8g2 y van en UTF-8, asi que ni son ASCII ni tienen mayusculas que
-        # comprobar.
+        # Latin names use the CP437 font (one byte per character, with no
+        # lowercase letters in names); Japanese and Korean use a
+        # U8g2 font and UTF-8, so they are neither ASCII nor limited to uppercase letters
+        # for verification.
         LATINOS, CJK = ('fr', 'de'), ('ja', 'ko')
         for num, langs in self.NAMES.items():
             self.assertIn(num, self.byNum, f'nombre traducido de una especie inexistente: {num}')
@@ -134,7 +134,7 @@ class TestDexData(unittest.TestCase):
                     self.assertEqual(name, name.upper(), f'{num} {lang} lleva minusculas: {name}')
                     self.assertLessEqual(len(name), 12, f'{num} {lang} no cabe en pantalla: {name}')
                 else:
-                    # el limite util son CARACTERES, no bytes: en UTF-8 cada kana o silaba hangul ocupa 3
+                    # The useful limit is CHARACTERS, not bytes: each kana or Hangul syllable occupies 3 bytes in UTF-8
                     self.assertLessEqual(len(name), 8, f'{num} {lang} no cabe en pantalla: {name}')
 
 
@@ -173,8 +173,8 @@ class TestSketchSanity(unittest.TestCase):
             cls.ino = fh.read()
 
     def test_el_sketch_no_lleva_caracteres_no_ascii_en_literales_de_pantalla(self):
-        # los comentarios pueden llevar lo que quieran; los literales, no:
-        # la fuente GFX es ASCII y un acento sale como basura
+        # Comments may contain anything; string literals may not:
+        # the GFX font is ASCII, so an accented character is rendered as garbage
         for lineno, line in enumerate(self.ino.splitlines(), 1):
             code = line.split('//')[0]
             for chunk in code.split('"')[1::2]:

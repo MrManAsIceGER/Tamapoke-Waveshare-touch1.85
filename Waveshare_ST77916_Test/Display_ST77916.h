@@ -30,13 +30,13 @@
 #define ESP_PANEL_LCD_SPI_IO_DATA2    42
 #define ESP_PANEL_LCD_SPI_IO_DATA3    41
 #define ESP_PANEL_LCD_SPI_IO_CS       21
-#define EXAMPLE_LCD_PIN_NUM_RST       (-1)  // Reset ueber TCA9554 EXIO2
+#define EXAMPLE_LCD_PIN_NUM_RST       (-1)  // Reset through TCA9554 EXIO2
 #define EXAMPLE_LCD_PIN_NUM_BK_LIGHT  (-1)
 
 #define EXAMPLE_LCD_BK_LIGHT_ON_LEVEL  1
 #define EXAMPLE_LCD_BK_LIGHT_OFF_LEVEL  0
 
-// Waveshare-internes Testbild benoetigt 15.840 Bytes pro DMA-Transfer.
+// The Waveshare built-in test image requires 15,840 bytes per DMA transfer.
 #define ESP_PANEL_HOST_SPI_MAX_TRANSFER_SIZE (16 * 1024)
 
 extern uint8_t LCD_Backlight;
