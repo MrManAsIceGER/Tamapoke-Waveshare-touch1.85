@@ -264,30 +264,44 @@ int Pet::careBonus() const {
   return s / 3 + bond / 25;
 }
 
+
 // primer cuidado del dia: avanza la racha y afianza el vinculo
 void Pet::registerCare() {
   if (isEgg() || ceremony != CER_NONE) return;
-  uint32_t d = today();
+
+  // Un dia se define como un bloque de 24 horas UTC.
+  // lastSeenEpoch lo actualiza el loop desde el RTC cada 30 segundos.
+  // Si no hay hora RTC valida, d sera 0 y no se alterara la racha.
+  uint32_t d = lastSeenEpoch / 86400UL;
+
   if (d == 0 || d == lastCareDay) return;  // sin reloj, o ya conto hoy
+
   if (lastCareDay == 0 || d == lastCareDay + 1) {
     streak++;
   } else {
     streak = 1;        // hubo un hueco de dias
     lastMilestone = 0;
   }
+
   lastCareDay = d;
   bondToday = 0;
+
   if (streak > bestStreak) bestStreak = streak;
+
   bond = clamp100(bond + 4);
+
   uint16_t ms = (streak >= 100) ? 100 : (streak >= 30) ? 30
               : (streak >= 7)   ? 7   : (streak >= 3)  ? 3 : 0;
+
   if (ms > lastMilestone) {
     lastMilestone = ms;
     milestoneUntil = millis() + 4500;
   }
+
   checkMedals();
   save();
 }
+
 
 void Pet::addBond(uint8_t amt) {
   if (bondToday >= 20) return;  // tope diario: el vinculo no se farmea
