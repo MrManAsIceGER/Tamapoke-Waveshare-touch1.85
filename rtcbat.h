@@ -17,7 +17,7 @@ int batPercent();          // -1 = keine Messung verfügbar
 bool batCharging();        // Ladezustand nicht auslesbar
 int batMillivolts();       // 0 = keine Spannungsmessung verfügbar
 bool batShouldShutdown();  // automatische Akkuabschaltung nicht verfügbar
-void batPowerOff();        // keine programmatische PMU-Abschaltung
+void batPowerOff();        // GPIO7 LOW trennt die Batterie-Versorgung
 bool usbPresent();         // konservativ: Versorgung als vorhanden behandeln
 bool usbPresentNow();
 
