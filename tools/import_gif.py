@@ -5,17 +5,17 @@ Convierte GIFs animados a frames 48x48 listos para el juego: recorte estable
 entre frames, reduccion de frames a keyframes, escalado, alpha binario y
 cuantizacion de colores por especie. (Script de apoyo, no del pipeline actual.)
 
-  python3 tools/import_gif.py            # convierte downloads/*.gif y
-                                         # renderiza tools/import_sheet.png
+  python3 tools/import_gif.py            # convert downloads/*.gif and
+                                         # render tools/import_sheet.png
 """
 import os
 import sys
 from PIL import Image
 
-CELL = 48          # rejilla del juego
-KEYFRAMES = 4      # frames de idle que conservamos
-MAX_COLORS = 24    # paleta maxima por especie
-ALPHA_T = 96       # umbral de alpha binario
+CELL = 48          # game grid
+KEYFRAMES = 4      # idle frames to keep
+MAX_COLORS = 24    # maximum palette size per species
+ALPHA_T = 96       # binary alpha threshold
 
 
 def load_frames(path):
@@ -29,7 +29,7 @@ def load_frames(path):
 
 
 def union_bbox(frames):
-    # caja comun a todos los frames para que no "baile" al recortar
+    # common bounding box for all frames so the sprite does not 'jump' when cropped
     x0, y0, x1, y1 = frames[0].size[0], frames[0].size[1], 0, 0
     for f in frames:
         bbox = f.getchannel('A').point(lambda a: 255 if a >= ALPHA_T else 0).getbbox()
@@ -54,8 +54,8 @@ def to_cell(frame, bbox):
     nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
     crop = crop.resize((nw, nh), Image.LANCZOS)
     cell = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
-    cell.paste(crop, ((CELL - nw) // 2, CELL - nh))  # apoyado en el suelo
-    # alpha binario
+    cell.paste(crop, ((CELL - nw) // 2, CELL - nh))  # anchored to the ground
+    # binary alpha
     px = cell.load()
     for y in range(CELL):
         for x in range(CELL):
@@ -65,7 +65,7 @@ def to_cell(frame, bbox):
 
 
 def quantize_set(cells, max_colors=MAX_COLORS):
-    # paleta comun a todos los frames de la especie (que no parpadee el color)
+    # shared palette for all frames of a species (prevents color flicker)
     strip = Image.new('RGBA', (CELL * len(cells), CELL))
     for i, c in enumerate(cells):
         strip.paste(c, (i * CELL, 0))
