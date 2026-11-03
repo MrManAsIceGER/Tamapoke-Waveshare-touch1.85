@@ -90,7 +90,7 @@ static uint16_t batLastMv = 0;
 static int batLastPercent = -1;
 
 static constexpr uint8_t BAT_ADC_SAMPLES = 8;
-static constexpr uint16_t BAT_PRESENT_MIN_MV = 2500;
+static constexpr uint16_t BAT_PRESENT_MIN_MV = 1500;
 static constexpr uint16_t BAT_ADC_DIVIDER = 3;
 
 struct BatteryCurvePoint {
@@ -179,7 +179,7 @@ bool batBegin() {
   batHasSample = false;
   batSampleVoltage();
 
-  Serial.printf("[BAT] BAT_ADC GPIO%d bereit: %d mV, %d%%\\n",
+  Serial.printf("[BAT] BAT_ADC GPIO%d bereit: %d mV, %d%%\n",
                 BAT_ADC_PIN, batLastMv, batLastPercent);
   return true;
 }
