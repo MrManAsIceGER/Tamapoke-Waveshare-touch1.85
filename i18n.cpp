@@ -4,8 +4,8 @@
 
 Lang gLang = LANG_DEFAULT;
 
-// Tabla de cadenas [idioma][id]. Sin acentos ni enes: la fuente bitmap del
-// firmware no los tiene (por eso el espanol ya iba "Esta", "bano", etc.).
+// String table [language][id]. The bitmap font used by the
+// firmware has no accented characters or ñ (Spanish therefore uses forms such as 'Esta' and 'bano').
 static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
   // ---------------- ES ----------------
   {
@@ -95,11 +95,11 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Pas de sprites", "Charge-les sur la SD",
   },
   // ---------------- DE ----------------
-  // El aleman si lleva dieresis: la fuente 5x7 del firmware es una tabla CP437
-  // completa (256 glifos), asi que basta con el byte suelto de cada caracter.
-  // Van en octal para no depender de la codificacion del fichero fuente:
-  //   \204 a   \224 o   \201 u   \216 A   \231 O   \232 U   \341 ss
-  // Un byte por caracter: strlen() sigue midiendo bien y el centrado no cambia.
+  // German uses umlauts: the firmware's 5x7 font is a complete CP437 table
+  // (256 glyphs), so each special character can be stored as a single byte.
+  // Use octal escapes so the source-file encoding does not matter:
+  // \204 a   \224 o   \201 u   \216 A   \231 O   \232 U   \341 ss
+  // One byte per character: strlen() remains accurate and text centering is unchanged.
   {
     "Entwickelt sich!", "Mampf mampf!", "Gef\204llt ihm!", "Hat Hunger!", "Braucht ein Bad!",
     "Ersch\224pft...", "Traurig...", "Etwas rundlich...", "Es ist SHINY!!", "Es ist froh",
@@ -239,11 +239,11 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "スプライトなし", "SDにいれてください",
   },
   // ---------------- KO ----------------
-  // Los especificadores van en el MISMO ORDEN que en la fila inglesa aunque
-  // el coreano natural los colocaria de otra manera (p. ej. S_NEXT_LVL_FMT):
-  // T(id) se rellena con varargs en un orden fijo en cada llamada, asi que
-  // reordenar %u/%s aqui sin tocar el punto de llamada intercambiaria en
-  // silencio que valor cae en que hueco.
+  // Format specifiers use the SAME ORDER as in the English row, even though
+  // natural Korean might place them differently (e.g. S_NEXT_LVL_FMT):
+  // T(id) is filled with varargs in a fixed order at every call, so
+  // reordering %u/%s here without changing the call site would silently
+  // put each value into the wrong placeholder.
   {
     "진화 중!", "냠냠!", "마음에 들어해요!", "배고파요!", "목욕이 필요해요!",
     "지쳤어요...", "슬퍼해요...", "조금 통통해요...", "이로치예요!!", "행복해요",
@@ -274,7 +274,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
   },
 };
 
-// Nombres de medalla en sus tres longitudes [idioma][medalla].
+// Medal names in three lengths [language][medal].
 static const char *const MED_NAME[LANG_COUNT][MED_COUNT] = {
   { "Nv.10", "Nv.25", "Nv.50", "BAYA", "RACHA 7", "VINCULO", "FORMA TOPE", "EN FORMA" },
   { "Lv.10", "Lv.25", "Lv.50", "BERRY", "7 STREAK", "BOND", "TOP FORM", "IN SHAPE" },
@@ -321,7 +321,7 @@ const char *medalDesc(int i)  { return MED_DSC[gLang][i]; }
 
 void loadLang() {
   Preferences p;
-  p.begin("tamapoke", true);  // solo lectura
+  p.begin("tamapoke", true);  // Read-only
   uint8_t v = p.getUChar("lang", LANG_DEFAULT);
   p.end();
   gLang = (v < LANG_COUNT) ? (Lang)v : LANG_DEFAULT;
