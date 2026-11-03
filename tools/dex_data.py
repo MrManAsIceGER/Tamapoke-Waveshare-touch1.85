@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
-"""Fuente unica de datos de la Pokedex gen 1 para TamaPoke.
+"""Single source of Gen 1 Pokédex data for TamaPoke.
 
-Cada entrada: (num, slug, nombre_pantalla, tipo, evoluciona_a, nivel)
-- slug: nombre en minusculas de la especie (identificador interno)
-- nombre_pantalla: mayusculas sin acentos. La fuente GFX si tiene glifos
-  acentuados (CP437), pero NO las mayusculas acentuadas salvo la E, y los
-  nombres se pintan en mayusculas, asi que aqui van sin tilde
-- tipo: clave de TYPE_ACCENTS (color del nombre en la UI)
-- evoluciona_a: numero de dex (0 = forma final); niveles gen 1 reales,
-  piedras ~30 y por intercambio ~40 convertidos a nivel. Eevee (133) se
-  ramifica en el codigo del juego (134/135/136 al azar).
-"""
+Each entry: (number, slug, display_name, type, evolves_to, level)
+- slug: lowercase species name (internal identifier)
+- display_name: uppercase, without accents. The GFX font (CP437) includes
+  accented lowercase glyphs but NOT uppercase accented letters except E.
+  Names are rendered in uppercase, so accents are omitted here.
+- type: TYPE_ACCENTS key (name color in the UI)
+- evolves_to: Dex number (0 = final form); actual Gen 1 evolution levels,
+  with stones (~30) and trades (~40) mapped to levels. Eevee (133) branches
+  in the game code (randomly to 134/135/136).
+""
 
 TYPE_ACCENTS = {
     'normal':    '#8a8a6a',
