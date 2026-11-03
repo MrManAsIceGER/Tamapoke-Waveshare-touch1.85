@@ -233,8 +233,10 @@ void setup() {
     // Rohdaten des CST816 werden auf den logischen Spielraum 466x466 skaliert.
     touch.setResolution(LCD_WIDTH, LCD_HEIGHT);
     touch.setTargetResolution(GAME_WIDTH, GAME_HEIGHT);
-    // Die Touch-Einheit ist wie die Anzeige um 180 Grad gedreht montiert.
-    touch.setMirrorXY(true, true);
+    // Die Messreihe zeigte: Die Koordinaten sind ohne Spiegelung korrekt
+    // orientiert (oben=kleines Y, unten=grosses Y; links=kleines X,
+    // rechts=grosses X). Eine 180-Grad-Spiegelung kehrte beides um.
+    touch.setMirrorXY(false, false);
     Serial.printf("Touch bereit: %s, Adresse 0x%02X\n",
                   touch.getModelName(), CST816_ADDR);
   }
