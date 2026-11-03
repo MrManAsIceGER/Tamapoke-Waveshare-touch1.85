@@ -205,7 +205,7 @@ static void pwrUpdateButton() {
         pwrIgnoreNextRelease = false;
       } else if (duration >= PWR_LONG_MS) {
         if (!pwrLongReported) pwrLongPending = true;
-            } else if (duration >= PWR_SHORT_MIN_MS &&
+      } else if (duration >= PWR_SHORT_MIN_MS &&
                  duration < PWR_LONG_MS) {
         pwrShortPending = true;
       }
