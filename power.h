@@ -2,10 +2,10 @@
 #pragma once
 #include <stdint.h>
 
-// Politica de consumo. Todo lo que decide cuanto trabaja la placa vive aqui como
-// funciones puras (sin hardware), para poder probarlas en el PC (test/test_power.cpp).
+// Power policy. All decisions about how much work the board performs live here as
+// pure functions (no hardware), so they can be tested on a PC (test/test_power.cpp).
 
-// Escalones de inactividad (ms desde el ultimo toque o evento visible)
+// Inactivity stages (ms since the last touch or visible event)
 #define POWER_CALM_MS 60000UL
 #define POWER_DIM1_MS 90000UL
 #define POWER_DIM2_MS 300000UL
@@ -26,7 +26,7 @@ struct PowerCtx {
   int batPct;
 };
 
-// ms desde `last`, sin desbordar si `last` es posterior a `now`
+// Milliseconds since `last`, without underflow if `last` is later than `now`
 inline uint32_t idleSince(uint32_t now, uint32_t last) {
   int32_t d = (int32_t)(now - last);
   return d < 0 && d > -1000 ? 0 : now - last;
@@ -38,7 +38,7 @@ inline uint8_t dimStageFor(uint32_t idleMs) {
          DIM_AWAKE;
 }
 
-// bateria baja: se ahorra mas
+// Low battery: save more power
 inline bool batteryLow(const PowerCtx &c) {
   return c.batPct >= 0 && c.batPct < 20 &&
          !c.charging && !c.usb;
@@ -49,7 +49,7 @@ inline bool batteryCritical(const PowerCtx &c) {
          !c.charging && !c.usb;
 }
 
-// brillo del panel (0-255)
+// Panel brightness (0-255)
 inline uint8_t brightnessFor(const PowerCtx &c) {
   if (c.screenOff) return 0;
 
@@ -71,7 +71,7 @@ inline uint8_t brightnessFor(const PowerCtx &c) {
   return t;
 }
 
-// ms entre frames; 0 = no se dibuja
+// Milliseconds between frames; 0 = do not draw
 inline uint32_t frameIntervalMs(const PowerCtx &c) {
   if (c.screenOff) return 0;
   if (c.gameOpen) return 85;
@@ -94,19 +94,19 @@ inline uint32_t frameIntervalMs(const PowerCtx &c) {
   return ms;
 }
 
-// el amplificador del altavoz consume en reposo
+// The speaker amplifier consumes power while idle
 inline bool amplifierWanted(const PowerCtx &c) {
   return !c.screenOff &&
          !c.sleeping &&
          dimStageFor(c.idleMs) == DIM_AWAKE;
 }
 
-// pausa del bucle principal en un pase que no dibuja
+// Pause the main loop during an iteration that does not draw
 inline uint32_t idleDelayMs(const PowerCtx &c) {
   return c.screenOff ? 20 : 1;
 }
 
-// con la pantalla apagada o casi apagada se duerme la CPU
+// With the display off or almost off, put the CPU to sleep
 inline bool lightSleepAllowed(const PowerCtx &c) {
   return !c.usb &&
          (c.screenOff || dimStageFor(c.idleMs) == DIM_OFF);
@@ -114,7 +114,7 @@ inline bool lightSleepAllowed(const PowerCtx &c) {
 
 #define POWER_SLEEP_MS 200
 
-// cada cuanto se lee la bateria
+// How often to read the battery
 inline uint32_t powerCacheMs(const PowerCtx &c) {
   return (c.screenOff || dimStageFor(c.idleMs) == DIM_OFF)
          ? 10000 : 2000;
