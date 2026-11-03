@@ -33,7 +33,7 @@ jobs:
       - name: Prepare sketch folder
         run: |
           mkdir -p build/TamaPoke
-          cp *.ino *.cpp *.c *.h build/TamaPoke/
+          cp TamaPoke.ino *.cpp *.c *.h build/TamaPoke/
 
       - name: Compile
         run: >
