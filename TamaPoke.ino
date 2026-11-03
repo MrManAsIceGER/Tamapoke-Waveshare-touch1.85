@@ -178,7 +178,7 @@ uint32_t tStart = 0;
 bool holdFired = false;
 
 void setup() {
-  // GPIO7 (BAT Control) sofort setzen, damit die Batterie-Versorgung
+  // Set GPIO7 (BAT Control) HIGH immediately so battery power remains on
   // Keep the battery supply enabled throughout initialization.
   pwrSetup();
 
