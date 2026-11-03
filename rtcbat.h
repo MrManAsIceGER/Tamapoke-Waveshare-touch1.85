@@ -2,7 +2,7 @@
 #pragma once
 #include <Arduino.h>
 
-// RTC PCF85063: Uhrzeit bleibt mit angeschlossener RTC-Batterie erhalten.
+// The PCF85063 RTC retains the time when a backup battery is connected.
 bool rtcBegin();
 uint32_t rtcEpoch();       // Unix seconds; 0 if the RTC time is invalid
 void rtcSetEpoch(uint32_t e);
