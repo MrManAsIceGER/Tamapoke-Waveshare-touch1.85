@@ -1,4 +1,3 @@
-
 #include "audio.h"
 #include "pin_config.h"
 
@@ -7,16 +6,10 @@
 #include <Preferences.h>
 
 // ------------------------------------------------------------
-// TamaPoke Audio
+// TamaPoke Audio – PCM5101 I2S-DAC
 //
-// Hardware:
-//   PCM5101 DAC
-//   I2S DOUT = GPIO47
-//   I2S LRCK = GPIO38
-//   I2S BCLK = GPIO48
-//
-// Der PCM5101 wird direkt ueber I2S angesteuert.
-// Keine ES8311-I2C-Initialisierung und kein MCLK erforderlich.
+// DOUT = GPIO47, LRCK = GPIO38, BCLK = GPIO48.
+// Kein ES8311-I2C-Setup und kein MCLK erforderlich.
 // ------------------------------------------------------------
 
 #define SAMPLE_RATE 16000
@@ -33,54 +26,21 @@ static bool gAmpHold = false;
 
 static QueueHandle_t gQ = nullptr;
 
-// ------------------------------------------------------------
-// Soundeffekt-Definitionen
-// ------------------------------------------------------------
-
 struct Note {
   uint16_t f;
   uint16_t ms;
 };
 
-static const Note N_TAP[] = {
-  {880, 35}
-};
-
-static const Note N_EAT[] = {
-  {660, 45}, {0, 12}, {660, 45}
-};
-
-static const Note N_PLAY[] = {
-  {784, 45}, {988, 60}
-};
-
-static const Note N_HEART[] = {
-  {1047, 55}, {1319, 90}
-};
-
-static const Note N_HATCH[] = {
-  {523, 80}, {659, 80}, {784, 110}, {1047, 170}
-};
-
-static const Note N_EVOLVE[] = {
-  {523, 80}, {659, 80}, {784, 80}, {1047, 90}, {1319, 230}
-};
-
-static const Note N_MEDAL[] = {
-  {784, 70}, {0, 25}, {784, 70}, {0, 25}, {1047, 200}
-};
-
-static const Note N_DENY[] = {
-  {300, 110}, {200, 170}
-};
-
-static const Note N_BYE[] = {
-  {784, 150}, {659, 150}, {523, 280}
-};
-
-static const Note N_LEVEL[] = {
-  {784, 70}, {1047, 130}
-};
+static const Note N_TAP[] = {{880, 35}};
+static const Note N_EAT[] = {{660, 45}, {0, 12}, {660, 45}};
+static const Note N_PLAY[] = {{784, 45}, {988, 60}};
+static const Note N_HEART[] = {{1047, 55}, {1319, 90}};
+static const Note N_HATCH[] = {{523, 80}, {659, 80}, {784, 110}, {1047, 170}};
+static const Note N_EVOLVE[] = {{523, 80}, {659, 80}, {784, 80}, {1047, 90}, {1319, 230}};
+static const Note N_MEDAL[] = {{784, 70}, {0, 25}, {784, 70}, {0, 25}, {1047, 200}};
+static const Note N_DENY[] = {{300, 110}, {200, 170}};
+static const Note N_BYE[] = {{784, 150}, {659, 150}, {523, 280}};
+static const Note N_LEVEL[] = {{784, 70}, {1047, 130}};
 
 struct SfxDef {
   const Note *n;
@@ -100,64 +60,40 @@ static const SfxDef SFX[SFX_COUNT] = {
   {N_LEVEL, 2}
 };
 
-// Stereo-Puffer: links und rechts erhalten dasselbe Signal.
 static int16_t buf[256 * 2];
 
-// ------------------------------------------------------------
-// Verstaerker-/Ruhezustand
-//
-// Auf diesem Board ist kein dedizierter, sicher belegter
-// Verstärker-Enable-GPIO in der Pinbelegung angegeben.
-// Der DAC wird deshalb nicht per GPIO ein- oder ausgeschaltet.
-// ------------------------------------------------------------
-
 static void updateAmplifierPower() {
-  // Die Funktion bleibt als zentrale Zustandsaktualisierung
-  // erhalten. Die Hardware besitzt hier keinen schaltbaren
-  // Enable-Pin, den wir gefahrlos verwenden koennen.
-
+  // Auf dieser Hardware ist kein sicher belegter Enable-GPIO definiert.
+  // Der PCM5101 bleibt daher ohne GPIO-Schaltung aktiv.
   if (gAmpHold &&
       (int32_t)(gAmpHoldUntil - millis()) <= 0) {
     gAmpHold = false;
   }
 }
 
-// ------------------------------------------------------------
-// Tonerzeugung
-// Rechtecksignal im Game-Boy-Stil mit Attack-/Release-Rampe.
-// ------------------------------------------------------------
-
 static void playTone(uint16_t f, uint16_t ms) {
   int total = SAMPLE_RATE * ms / 1000;
   int half = f ? (SAMPLE_RATE / (2 * f)) : 0;
 
   const int16_t amp = 5000;
-
   int phase = 0;
   int done = 0;
   bool high = true;
 
   while (done < total) {
     int n = total - done;
-
-    if (n > 256) {
-      n = 256;
-    }
+    if (n > 256) n = 256;
 
     for (int i = 0; i < n; i++) {
       int16_t s = 0;
 
       if (f) {
         s = high ? amp : -amp;
-
         int idx = done + i;
 
-        // Attack-Rampe
         if (idx < 64) {
           s = (int16_t)(s * idx / 64);
-        }
-        // Release-Rampe
-        else if (idx > total - 96) {
+        } else if (idx > total - 96) {
           s = (int16_t)(s * (total - idx) / 96);
         }
 
@@ -171,16 +107,10 @@ static void playTone(uint16_t f, uint16_t ms) {
       buf[i * 2 + 1] = s;
     }
 
-    // Stereo: 16 Bit links + 16 Bit rechts
     i2s.write((uint8_t *)buf, n * 4);
-
     done += n;
   }
 }
-
-// ------------------------------------------------------------
-// Audio-Task
-// ------------------------------------------------------------
 
 static void audioTask(void *) {
   uint8_t id;
@@ -192,9 +122,7 @@ static void audioTask(void *) {
       }
 
       const SfxDef &d = SFX[id];
-
       for (uint8_t i = 0; i < d.len; i++) {
-        // Während eines Effekts darf die CPU nicht schlafen.
         playTone(d.n[i].f, d.n[i].ms);
       }
 
@@ -203,29 +131,19 @@ static void audioTask(void *) {
   }
 }
 
-// ------------------------------------------------------------
-// Initialisierung
-// ------------------------------------------------------------
-
 void audioBegin() {
   gReady = false;
 
-  // PCM5101:
-  // BCLK = GPIO48
-  // LRCK = GPIO38
-  // DOUT = GPIO47
-  //
-  // Kein MCLK und kein I2S-DIN erforderlich.
-  if (!i2s.setPins(
-        I2S_BCLK,
-        I2S_LRCK,
-        I2S_DOUT,
-        -1,
-        -1
-      )) {
-    Serial.println("I2S Pin-Konfiguration fehlgeschlagen");
-    return;
-  }
+  // ESP32 Arduino Core 3.3.12:
+  // I2SClass::setPins() liefert void, keinen bool-Wert.
+  // Deshalb darf das Ergebnis nicht mit ! ausgewertet werden.
+  i2s.setPins(
+    I2S_BCLK,
+    I2S_LRCK,
+    I2S_DOUT,
+    -1,
+    -1
+  );
 
   if (!i2s.begin(
         I2S_MODE_STD,
@@ -238,17 +156,13 @@ void audioBegin() {
     return;
   }
 
-  // Gespeicherte Soundeinstellung laden.
   Preferences p;
-
   if (p.begin("tamapoke", true)) {
     gOn = p.getBool("snd", true);
     p.end();
   }
 
-  // Queue fuer nicht-blockierende Soundeffekte.
   gQ = xQueueCreate(8, sizeof(uint8_t));
-
   if (!gQ) {
     Serial.println("Audio Queue konnte nicht erstellt werden");
     return;
@@ -272,36 +186,23 @@ void audioBegin() {
   }
 
   gReady = true;
-
   Serial.println("PCM5101 Audio bereit");
-
-  // Start-Jingle
   sfxPlay(SFX_HATCH);
 }
-
-// ------------------------------------------------------------
-// Soundeffekte in die Queue stellen
-// ------------------------------------------------------------
 
 void sfxPlay(uint8_t id) {
   if (!gReady || !gOn || !gQ || id >= SFX_COUNT) {
     return;
   }
 
-  // Ein Effekt im Ruhemodus darf noch gehoert werden.
   if (gIdle) {
     gAmpHoldUntil = millis() + 4000;
     gAmpHold = true;
     updateAmplifierPower();
   }
 
-  // Nicht blockierend; bei voller Queue wird der Effekt verworfen.
   xQueueSend(gQ, &id, 0);
 }
-
-// ------------------------------------------------------------
-// Sound-Einstellungen
-// ------------------------------------------------------------
 
 void audioSetEnabled(bool on) {
   gOn = on;
@@ -313,7 +214,6 @@ void audioSetEnabled(bool on) {
   updateAmplifierPower();
 
   Preferences p;
-
   if (p.begin("tamapoke", false)) {
     p.putBool("snd", on);
     p.end();
@@ -323,10 +223,6 @@ void audioSetEnabled(bool on) {
 bool audioEnabled() {
   return gOn;
 }
-
-// ------------------------------------------------------------
-// Schlafzustand der Spielfigur
-// ------------------------------------------------------------
 
 void audioSetSleeping(bool sleeping) {
   if (gSleeping == sleeping) {
@@ -342,10 +238,6 @@ void audioSetSleeping(bool sleeping) {
   updateAmplifierPower();
 }
 
-// ------------------------------------------------------------
-// Audio-Busy-Abfrage
-// ------------------------------------------------------------
-
 bool audioBusy() {
   if (gAmpHold &&
       (int32_t)(gAmpHoldUntil - millis()) > 0) {
@@ -354,10 +246,6 @@ bool audioBusy() {
 
   return false;
 }
-
-// ------------------------------------------------------------
-// Energiesparzustand
-// ------------------------------------------------------------
 
 void audioSetIdle(bool idle) {
   gIdle = idle;
