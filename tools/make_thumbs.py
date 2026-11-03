@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Genera /mons/thumbs.bin: miniaturas 40x40 de los 151 para la galeria.
+"""Generate /mons/thumbs.bin: 40x40 thumbnails for all 151 species in the gallery.
 
-Se derivan del frame frontal (Idle, frame 0) de los sprites PMD ya empaquetados
-(tools/sdcard/mons/pNNN.bin, formato TPK2) -> miniaturas legales (CC BY-NC), mismo
-estilo que la pantalla principal. Formato TPTH (little-endian):
+Derived from the front-facing frame (Idle, frame 0) of the packed PMD sprites
+(tools/sdcard/mons/pNNN.bin, TPK2 format). These CC BY-NC thumbnails match
+the main-screen art style. TPTH format (little-endian):
 
   char[4] "TPTH"
   uint16  count
-  uint32  offset[count]    (desde el inicio del archivo, 1-based: offset[0]=dex 1)
-  blobs:  u8 w, u8 h, u8 palCount, u16 pal[palCount], u8 data[w*h] (0xFF transp.)
+  uint32  offset[count]    (from file start, 1-based: offset[0] = Dex 1)
+  blobs:  u8 w, u8 h, u8 palCount, u16 pal[palCount], u8 data[w*h] (0xFF = transparent)
 
   python3 tools/make_thumbs.py
 """
@@ -20,7 +20,7 @@ CELL = 40
 
 
 def read_pmd_idle_frame0(path):
-    """Frame 0 de la accion Idle (id 0 = vista frontal) de un sprite PMD TPK2."""
+    """Frame 0 of the Idle action (id 0 = front view) from a PMD TPK2 sprite."""
     with open(path, 'rb') as f:
         buf = f.read()
     if buf[:4] != b'TPK2':
