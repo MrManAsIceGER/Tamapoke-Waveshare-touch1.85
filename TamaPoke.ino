@@ -1901,8 +1901,8 @@ void renderCardMedals() {
   }
 }
 
-// pagina 3: progreso (nivel, evolucion, descuidos) — saca a la luz mecanicas
-// que antes eran invisibles (cuanto falta para subir/evolucionar y por que)
+// Page 3: progress (level, evolution, care mistakes) reveals mechanics
+// that were previously hidden (progress to the next level/evolution and why)
 void renderCardProgress() {
   const DexEntry &d = DEX_TBL[pet.speciesId];
   gfx->setTextColor(UI_INK);
@@ -1917,7 +1917,7 @@ void renderCardProgress() {
   setCur(centerX(lv, 5), 86);
   printT(lv);
 
-  // barra de progreso al siguiente nivel (1 nivel = 60 min de juego)
+  // Progress bar to the next level (1 level = 60 minutes of game time)
   uint8_t into = pet.ageMinutes % MINUTES_PER_LEVEL;
   int bx = 93, bw = 280, by = 158, bh = 22;
   gfx->fillRoundRect(bx, by, bw, bh, 6, UI_TRACK);
@@ -1953,7 +1953,7 @@ void renderCardProgress() {
   setCur(centerX(evo, 2), 256);
   printT(evo);
 
-  // descuidos (retrasan la evolucion)
+  // Care mistakes (delay evolution)
   char ms[24];
   snprintf(ms, sizeof(ms), T(S_MISTAKES_FMT), pet.careMistakes);
   gfx->setTextColor(pet.careMistakes > 0 ? UI_BAR_BAD : UI_INK);
@@ -1981,7 +1981,7 @@ void renderCard() {
   gfx->flush();
 }
 
-// ---------- teclado para renombrar ----------
+// ---------- Rename keyboard ----------
 
 static const char KB_KEYS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ.-";  // 28 + DEL + OK = 30
 #define KB_COLS 6
@@ -2004,7 +2004,7 @@ void renderKeyboard() {
   setSize(2);
   setCur(centerX(T(S_NAME), 2), 56);
   printT(T(S_NAME));
-  // buffer actual
+  // Current buffer
   gfx->fillRoundRect(83, 84, 300, 40, 8, UI_WHITE);
   gfx->drawRoundRect(83, 84, 300, 40, 8, UI_INK);
   setSize(3);
@@ -2031,9 +2031,9 @@ void renderKeyboard() {
 }
 
 void keyboardTap(int16_t x, int16_t y) {
-  // filtra ANTES de dividir: con x/y menores que KB_X/KB_Y la resta da negativo
-  // y la division entera trunca hacia cero (no hacia -inf), asi que col/row
-  // saldria 0 en vez de negativo y el filtro de abajo no lo detectaria
+  // Filter BEFORE dividing: if x/y are smaller than KB_X/KB_Y, the subtraction is negative
+  // and integer division truncates toward zero (not toward -infinity), so col/row
+  // would become 0 instead of negative and the check below would miss it
   if (x < KB_X || y < KB_Y) return;
   int col = (x - KB_X) / KB_W, row = (y - KB_Y) / KB_H;
   if (col >= KB_COLS || row >= 5) return;
@@ -2056,7 +2056,7 @@ void keyboardTap(int16_t x, int16_t y) {
 #define GAL_Y 84
 #define GAL_CELL 80
 
-// dibuja una miniatura centrada en su celda; sil=true la pinta en tinta
+// Draw a thumbnail centered in its cell; sil=true draws it as a silhouette
 void drawThumb(const uint8_t *b, int x, int y, int s, bool sil) {
   uint8_t w = b[0], h = b[1], n = b[2];
   const uint8_t *pal = b + 3;
@@ -2074,7 +2074,7 @@ void drawThumb(const uint8_t *b, int x, int y, int s, bool sil) {
 }
 
 void renderGallery() {
-  if (galleryDetail) {  // vista detalle: se redibuja siempre (animada)
+  if (galleryDetail) {  // Detail view: always redraw because it is animated
     gfx->fillScreen(RGB565_BLACK);
     gfx->fillCircle(CX, CY, 231, UI_BG_DAY);
     const DexEntry &d = DEX_TBL[galleryDetail];
@@ -2084,14 +2084,14 @@ void renderGallery() {
              pet.isShinyRegistered(galleryDetail) ? "*" : "", reg ? dexName(galleryDetail) : "???");
     gfx->setTextColor(reg ? d.accent : UI_INK);
     // auto-encoge nombres largos (no caben a t3), midiendo en vez de contar
-    // bytes; 13 caracteres a tamano 3 son los 234 px de antes.
+    // bytes; 13 characters at size 3 use the same 234 px as before.
     setSize(3);
     int gts = (textW(head, 3) <= 234) ? 3 : 2;
     setSize(gts);
     setCur(centerX(head, gts), gts == 3 ? 56 : 60);
     printT(head);
     if (galleryPmd.loaded) {
-      // animado y a color si esta registrado; silueta estatica si no (estilo "?")
+      // Animated and in color if registered; otherwise show a static silhouette ("?")
       drawPmdActM(galleryPmd, PMD_IDLE, CX, 300, reg ? millis() : 0, true, !reg, 6);
     } else {
       const uint8_t *t = thumbs.get(galleryDetail);
@@ -2105,7 +2105,7 @@ void renderGallery() {
     return;
   }
 
-  if (!galleryDirty) return;  // la rejilla es estatica
+  if (!galleryDirty) return;  // The grid is static
   galleryDirty = false;
 
   gfx->fillScreen(RGB565_BLACK);
@@ -2150,18 +2150,18 @@ void renderGallery() {
 }
 
 void galleryTap(int16_t x, int16_t y) {
-  if (galleryDetail) {  // volver a la rejilla
+  if (galleryDetail) {  // Return to the grid
     galleryDetail = 0;
     galleryPmd.unload();
     galleryDirty = true;
     return;
   }
-  if (y < 72) {  // tocar la cabecera = salir
+  if (y < 72) {  // Tap the header to exit
     galleryOpen = false;
     galleryPmd.unload();
     return;
   }
-  // mismo motivo que en el teclado: filtrar antes de dividir
+  // Same reason as in the keyboard: filter before dividing
   if (x < GAL_X || y < GAL_Y) return;
   int c = (x - GAL_X) / GAL_CELL, r = (y - GAL_Y) / GAL_CELL;
   if (c > 3 || r > 3) return;
@@ -2173,7 +2173,7 @@ void galleryTap(int16_t x, int16_t y) {
 
 void drawBattery() {
   int pc = batPercent();
-  if (pc < 0) return;  // sin bateria conectada
+  if (pc < 0) return;  // No battery connected
   int x = CX - 14, y = 12, w = 24, h = 11;
   bool charging = batCharging();
   uint16_t col = charging ? UI_BAR_OK
@@ -2183,7 +2183,7 @@ void drawBattery() {
   gfx->drawRoundRect(x, y, w, h, 2, col);
   gfx->fillRect(x + w, y + 3, 3, 5, col);  // borne
   if (charging) {
-    // rayo de carga (zigzag) en vez de la barra de nivel
+    // Charging bolt (zigzag) instead of the level bar
     uint16_t bolt = C565(0xff, 0xd9, 0x4a);
     int bx = x + w / 2;
     gfx->fillTriangle(bx + 3, y + 1, bx - 4, y + 6, bx + 1, y + 6, bolt);
@@ -2206,12 +2206,12 @@ void drawHeader(const char *name, uint16_t nameColor, const char *msg) {
   printT(msg);
 }
 
-// animacion de la ceremonia (10s): despedida = reverencia con corazones y se
-// aleja caminando; escapada = se asusta y sale corriendo. Sustituye al idle.
+// Ceremony animation (10 s): farewell = bow with hearts, then the pet
+// walks away; runaway = the pet gets scared and runs off. Replaces idle.
 void drawCeremony() {
   if (!pmd.loaded) { drawPet(); return; }  // respaldo si no hay sprite PMD
   uint32_t now = millis();
-  float t = pet.ceremonyT();               // 0..1 a lo largo de los 10s
+  float t = pet.ceremonyT();               // 0..1 across the 10-second duration
   bool panic = (pet.ceremony == CER_RUNAWAY);
   int x = CX, y = PET_GROUND;
   uint8_t act = PMD_IDLE;
@@ -2227,13 +2227,13 @@ void drawCeremony() {
     if (t < 0.30f) {                       // cabizbajo, temblando
       act = pmd.has(PMD_HURT) ? PMD_HURT : PMD_IDLE;
       x = CX + (int)(4 * sinf(now * 0.04f));
-    } else {                               // se aleja despacio y se desvanece
+    } else {                               // Moves away slowly and fades out
       act = pmd.has(PMD_WALKL) ? PMD_WALKL : PMD_IDLE;
       x = CX - (int)(((t - 0.30f) / 0.70f) * (CX + 120));
-      fade = (t > 0.6f) && ((now / 160) % 2 == 0);  // parpadea hacia la silueta
+      fade = (t > 0.6f) && ((now / 160) % 2 == 0);  // Blink into the silhouette
     }
-    drawPmdAct(act, x, y, now, true, fade, 5);  // fade=silueta: se difumina al irse
-    // lagrima cayendo del bicho
+    drawPmdAct(act, x, y, now, true, fade, 5);  // fade=silhouette: fade out while leaving
+    // Tear falling from the pet
     if (t < 0.55f) {
       int ty = y - 150 + (int)((now / 6) % 40);
       gfx->fillRect(x + 6, ty, 3, 6, C565(0x9a, 0xc4, 0xe8));
@@ -2241,7 +2241,7 @@ void drawCeremony() {
     return;
   }
 
-  // despedida epica: halo dorado pulsante + chispas y corazones que ascienden
+  // Epic farewell: pulsing golden halo + sparks and rising hearts
   int gcy = PET_GROUND - 96;
   for (int k = 0; k < 4; k++) {
     int r = 60 + k * 34 + (int)(10 * sinf(now * 0.02f));
@@ -2249,7 +2249,7 @@ void drawCeremony() {
   }
   for (int i = 0; i < 16; i++) {
     int px = (i * 71 + 28) % 466;
-    int py = 410 - (int)((now / 8 + i * 70) % 360);   // suben y reaparecen abajo
+    int py = 410 - (int)((now / 8 + i * 70) % 360);   // Rise and reappear at the bottom
     if (py < 30) continue;
     if (i % 4 == 0) drawMap(SPR_HEART, 32, px - 8, py - 8, 1, false);  // corazoncito
     else gfx->fillRect(px, py, 4, 4, (i % 2) ? C565(0xff, 0xe7, 0x9f) : C565(0xff, 0x9a, 0xc0));
@@ -2257,12 +2257,12 @@ void drawCeremony() {
 
   if (t < 0.45f) {                         // reverencia / pose de despedida
     act = pmd.has(PMD_POSE) ? PMD_POSE : (pmd.has(PMD_NOD) ? PMD_NOD : PMD_IDLE);
-  } else {                                 // se aleja por la derecha
+  } else {                                 // Moves away to the right
     act = pmd.has(PMD_WALKR) ? PMD_WALKR : PMD_IDLE;
     x = CX + (int)(((t - 0.45f) / 0.55f) * (CX + 140));
   }
   drawPmdAct(act, x, y, now, true, false, 5);
-  if (pet.showHeart())                     // corazon grande siguiendo al bicho
+  if (pet.showHeart())                     // Large heart following the pet
     drawMap(SPR_HEART, 32, x + 50, y - 190, 2, false);
 }
 
@@ -2293,7 +2293,7 @@ void drawChoiceDialog() {
   printT(o2);
 }
 
-// boton-CTA rojo y grande para evolucionar (pulsa para llamar la atencion)
+// Large red evolution call-to-action button (pulses to attract attention)
 void drawEvolveButton() {
   uint32_t now = millis();
   int p = (int)(5 * sinf(now * 0.006f));  // late: -5..5
@@ -2324,7 +2324,7 @@ void drawFarewellButton() {
   printT(buf);
 }
 
-// boton-CTA sombrio de escapada por abandono: "<nombre> se siente abandonado..."
+// Dark runaway call-to-action button for neglect: "<name> feels abandoned..."
 // (final triste: azul-gris oscuro, latido lento y apagado)
 void drawRunawayButton() {
   uint32_t now = millis();
@@ -2341,39 +2341,39 @@ void drawRunawayButton() {
   printT(buf);
 }
 
-// animacion epica de evolucion: halo radial + rayos giratorios + parpadeo del
-// sprite acelerando + chispas que salen disparadas + fogonazo final
+// Epic evolution animation: radial halo + rotating rays + flashing
+// accelerating sprite + flying sparks + final flash
 void drawEvolveFX(uint32_t now) {
   float t = pet.evolveT();          // 0..1
   int cx = CX, cy = PET_GROUND - 96;
 
-  // halo radial que crece y pulsa
+  // Radial halo that grows and pulses
   int halo = 36 + (int)(t * 150) + (int)(8 * sinf(now * 0.02f));
   for (int k = 0; k < 4; k++) {
     int r = halo - k * 7;
     if (r > 0) gfx->drawCircle(cx, cy, r, UI_WHITE);
   }
-  // rayos giratorios desde el centro del bicho
+  // Rotating rays from the center of the pet
   float base = now * 0.004f;
   for (int i = 0; i < 12; i++) {
     float a = base + i * (float)(PI / 6);
     int len = 90 + (int)(70 * (0.5f + 0.5f * sinf(now * 0.012f + i)));
     gfx->drawLine(cx, cy, cx + (int)(cosf(a) * len), cy + (int)(sinf(a) * len), UI_WHITE);
   }
-  // parpadeo entre la forma ANTERIOR y la NUEVA (siluetas), acelerando; al
-  // final (t>0.9) se queda fija en la nueva para el fogonazo de revelado
+  // Flash between the OLD and NEW forms (silhouettes), accelerating; at the
+  // end (t>0.9), keep the new form visible for the reveal flash
   int period = 60 + (int)(220 * (1.0f - t));
   bool showOld = t < 0.9f && evoPmd.loaded && ((now / period) % 2) == 0;
   if (showOld) drawPmdActM(evoPmd, PMD_IDLE, cx, PET_GROUND, 0, true, true, 5);
   else drawPmdAct(PMD_IDLE, cx, PET_GROUND, 0, true, true, 5);
-  // chispas que salen disparadas
+  // Sparks flying outward
   for (int i = 0; i < 10; i++) {
     float a = i * (float)(PI / 5) + t * 4.0f;
     int d = (int)((now / 14 + i * 33) % 200);
     int sx = cx + (int)(cosf(a) * d), sy = cy + (int)(sinf(a) * d);
     gfx->fillRect(sx - 2, sy - 2, 5, 5, (i & 1) ? C565(0xff, 0xe0, 0x70) : UI_WHITE);
   }
-  // fogonazo final antes de revelar la forma nueva
+  // Final flash before revealing the new form
   if (t > 0.9f) gfx->fillCircle(cx, cy, (int)(300 * (t - 0.9f) / 0.1f), UI_WHITE);
 }
 
@@ -2388,7 +2388,7 @@ void drawPet() {
   }
   int fi = flashIdxForDex(pet.speciesId);
   if (fi < 0) {
-    // sin SD y sin sprite de flash: aviso claro de que faltan sprites
+    // No SD card and no built-in flash sprite: show a clear missing-sprites warning
     gfx->setTextColor(inkColor());
     setSize(6);
     setCur(CX - 18, PET_CY - 80);
@@ -2407,7 +2407,7 @@ void drawPet() {
   int x = CX - 16 * s;
   int y = PET_CY - 16 * s;
 
-  // animacion de evolucion: alterna la silueta de la forma anterior y la nueva
+  // Evolution animation: alternate between the old and new form silhouettes
   if (pet.evolving()) {
     bool flash = (millis() / 300) % 2;
     int16_t showDex = (flash && pet.prevSpeciesId >= 0) ? pet.prevSpeciesId : pet.speciesId;
@@ -2424,7 +2424,7 @@ void drawPet() {
 
   drawMap(sp.sprite, SPRITE_H, x, y, s, false);
 
-  // expresiones superpuestas usando las anclas de la especie
+  // Overlay expressions using the species' anchors
   bool blink = (millis() % 3500 < 300);
   if (m == MOOD_SLEEPING || blink) {
     overlayEye(sp, x, y, s, sp.eyeColL);
@@ -2480,7 +2480,7 @@ void drawBath() {
       gfx->fillCircle(bx - b.r / 3, by - b.r / 3, b.r / 4, UI_BG_DAY);
     }
   } else {
-    // las pompas revientan: destellos
+    // Bubbles pop into sparkles
     for (int i = 0; i < 8; i++) {
       auto &b = bubbles[i];
       int sx = b.x + (i % 3) * 6 - 6, sy = b.y - 18;
@@ -2491,7 +2491,7 @@ void drawBath() {
   }
 }
 
-// ---------- mascota PMD: comportamiento ----------
+// ---------- PMD pet: behavior ----------
 
 uint32_t pmdActTotalMs(const PmdAct &a) {
   uint32_t t = 0;
@@ -2504,8 +2504,8 @@ uint8_t pmdFrameAt(const PmdAct &a, uint32_t t, bool loop) {
   if (!loop && t >= total) return a.frames - 1;
   t %= total;
   uint8_t i = 0;
-  // guarda: nunca mas vueltas que frames, por si un .bin corrupto trae ms[]=0
-  // pese al saneo de la carga (defensa en profundidad)
+  // Guard: never loop more times than there are frames, in case a corrupt .bin contains ms[]=0
+  // even after load-time validation (defense in depth)
   for (uint8_t guard = 0; guard < a.frames && t >= a.ms[i]; guard++) {
     t -= a.ms[i];
     i = (i + 1) % a.frames;
@@ -2513,8 +2513,8 @@ uint8_t pmdFrameAt(const PmdAct &a, uint32_t t, bool loop) {
   return i;
 }
 
-// dibuja una accion anclada por la base (centro-x, suelo) y devuelve su escala
-// dibuja una accion de un PmdMon concreto (m); drawPmdAct usa el global pmd
+// Draw an action anchored at its base (center X, ground) and return its scale
+// Draw an action from a specific PmdMon (m); drawPmdAct uses the global pmd
 void drawPmdActM(PmdMon &m, uint8_t actId, int cx, int groundY, uint32_t t, bool loop, bool sil, uint8_t maxS) {
   const PmdAct &a = m.acts[actId];
   if (!a.frames) return;
@@ -2522,11 +2522,11 @@ void drawPmdActM(PmdMon &m, uint8_t actId, int cx, int groundY, uint32_t t, bool
   if (sBase < 2) sBase = 2;
   if (sBase > maxS) sBase = maxS;
   uint8_t s = sBase;
-  while (s > 2 && a.h * s > 250) s--;  // acciones con frame grande (ataque)
+  while (s > 2 && a.h * s > 250) s--;  // Actions with oversized frames (attack)
   uint8_t fi = pmdFrameAt(a, t, loop);
   const uint8_t *fr = a.data + (uint32_t)fi * a.w * a.h;
-  // anclar por los pies (a.base), no por el alto del lienzo: asi las acciones
-  // con padding distinto (Hurt, Eat...) quedan todas a la misma altura de suelo
+  // Anchor at the feet (a.base), not at the canvas height, so actions
+  // with different padding (Hurt, Eat, etc.) all share the same ground level
   int x0 = cx - a.w * s / 2, y0 = groundY - (a.base ? a.base : a.h) * s;
   for (int r = 0; r < a.h; r++) {
     const uint8_t *row = fr + r * a.w;
@@ -2538,7 +2538,7 @@ void drawPmdAct(uint8_t actId, int cx, int groundY, uint32_t t, bool loop, bool 
   drawPmdActM(pmd, actId, cx, groundY, t, loop, sil, maxS);
 }
 
-// elige el siguiente capricho del bicho cuando esta contento
+// Choose the pet's next whim while it is happy
 void behNext() {
   uint32_t now = millis();
   beh.t0 = now;
@@ -2548,7 +2548,7 @@ void behNext() {
     beh.targetX = 150 + random(176);
     beh.until = now + 15000;
   } else if (r < 60) {
-    // gesto aleatorio entre los disponibles
+    // Random gesture among the available actions
     // (Hop fuera: salta demasiado alto; Sit fuera: mira hacia atras)
     static const uint8_t flair[] = { PMD_POSE, PMD_NOD, PMD_BREATH };
     uint8_t pick[3], n = 0;
@@ -2575,7 +2575,7 @@ void drawPetPMD() {
     drawEvolveFX(now);
     return;
   }
-  if (evoPmd.loaded) evoPmd.unload();  // termino la evolucion: libera la forma anterior
+  if (evoPmd.loaded) evoPmd.unload();  // Evolution finished: release the previous form
 
   PetMood m = pet.mood();
   uint8_t act;
@@ -2589,23 +2589,23 @@ void drawPetPMD() {
   } else if (m == MOOD_SAD && pmd.has(PMD_HURT)) {
     act = PMD_HURT;
   } else {
-    // contento: el planificador decide (idle / paseo / gesto)
+    // Happy: the scheduler chooses (idle / walk / gesture)
     if (now > beh.until) behNext();
-    if (beh.mode != 1) walkLast = 0;  // al volver a caminar no se cuenta el tiempo parado
+    if (beh.mode != 1) walkLast = 0;  // Do not count idle time when walking resumes
     if (beh.mode == 1) {
       float d = beh.targetX - beh.x;
       if (fabsf(d) < 4) {
         behNext();
         act = PMD_IDLE;
       } else {
-        // 30 px/s de diseno (3 px por frame a 10 fps), midiendo el tiempo real: con menos frames
-        // por segundo camina igual de rapido
+        // Design speed is 30 px/s (3 px per frame at 10 fps), measured in real time: even with fewer frames
+        // per second, walking speed stays the same
         uint32_t dt = walkLast ? now - walkLast : 100;
-        uint32_t cap = frameIntervalMs(powerCtx(now)) + 100;  // un hueco mayor (otra pantalla de por medio) no es un paso largo
+        uint32_t cap = frameIntervalMs(powerCtx(now)) + 100;  // A larger gap (another screen in between) is not one long step
         if (dt > cap) dt = cap;
         walkLast = now;
         float step = 30.0f * dt / 1000.0f;
-        if (step > fabsf(d)) step = fabsf(d);  // un frame lento no sobrepasa el destino
+        if (step > fabsf(d)) step = fabsf(d);  // A slow frame must not overshoot the destination
         beh.x += d > 0 ? step : -step;
         act = (d > 0) ? PMD_WALKR : PMD_WALKL;
       }
@@ -2621,7 +2621,7 @@ void drawPetPMD() {
   if (pet.showHeart()) drawMap(SPR_HEART, 32, (int)beh.x + 50, PET_GROUND - 190, 2, false);
 }
 
-// sprite animado desde la SD: zoom entero por pixel, frames a su ritmo
+// Animated sprite from the SD card: integer zoom per pixel, frames run at their own rate
 void drawPetSD() {
   int s = mon.scale;
   int w = mon.w * s, h = mon.h * s;
@@ -2644,17 +2644,17 @@ void drawPetSD() {
             [&](int c0, int len, int k) { gfx->fillRect(x + c0 * s, y + r * s, len * s, s, sil ? INK_K : mon.pal[k]); });
   }
 
-  // emotes en vez de expresiones (los sprites importados no tienen anclas)
+  // Use emotes instead of expressions (imported sprites have no anchors)
   if (pet.showHeart()) drawMap(SPR_HEART, 32, x + w - 30, y - 50, 2, false);
 }
 
-// ojo cerrado: borra el ojo 3x4 y dibuja el parpado
+// Closed eye: erase the 3x4 eye and draw the eyelid
 void overlayEye(const Species &sp, int x, int y, int s, int col) {
   gfx->fillRect(x + col * s, y + sp.eyeRow * s, 3 * s, 4 * s, sp.bodyColor);
   gfx->fillRect(x + col * s, y + (sp.eyeRow + 2) * s, 3 * s, s, INK_K);
 }
 
-// borra la sonrisa base y pinta boca abierta (comer) o ceno (triste)
+// Erase the base smile and draw an open mouth (eating) or a frown (sad)
 void overlayMouth(const Species &sp, int x, int y, int s, bool open) {
   int mc = sp.mouthCol, mr = sp.mouthRow;
   gfx->fillRect(x + (mc - 3) * s, y + mr * s, 7 * s, 2 * s, sp.bodyColor);
@@ -2680,12 +2680,12 @@ void drawBars() {
   drawBar(244, 346, T(S_BAR_HYG), pet.hygiene);
 }
 
-// Separacion entre la etiqueta y su barra en la fila de necesidades. Estaba fija
-// en 48 px, justo lo que ocupan 4 letras latinas a escala 2, sin margen. Las
-// etiquetas japonesas son mas anchas (ごきげん son 4 kana, ~64 px) y se metian
-// dentro de la barra. Se deriva de la etiqueta mas larga, con el 48 de suelo
-// para que en los idiomas latinos no cambie nada.
-// Requiere el tamano de texto 2 ya puesto, porque textW() lo necesita.
+// Spacing between the label and its bar in the needs row. It used to be fixed
+// at 48 px, exactly the width of four Latin letters at scale 2, with no margin. The
+// Japanese labels are wider (ごきげん is four kana, about 64 px) and overlapped
+// the bar. Derive the spacing from the widest label, keeping 48 as the minimum
+// so Latin layouts remain unchanged.
+// Text size 2 must already be set because textW() depends on it.
 static int barLabelGap() {
   const StrId ids[] = { S_BAR_FOOD, S_BAR_JOY, S_BAR_ENE, S_BAR_HYG };
   int ancho = 0;
@@ -2693,8 +2693,8 @@ static int barLabelGap() {
     int w = textW(T(id), 2);
     if (w > ancho) ancho = w;
   }
-  // por debajo del umbral original se deja EXACTAMENTE 48, para no mover nada en
-  // los idiomas latinos; por encima se anade aire para que la etiqueta respire
+  // Keep EXACTLY 48 below the original threshold so Latin layouts do not move;
+  // above it, add enough spacing to keep the label clear
   return ancho <= 48 ? 48 : ancho + 8;
 }
 
@@ -2704,10 +2704,10 @@ void drawBar(int x, int y, const char *label, uint8_t val) {
   setCur(x, y);
   printT(label);
   int gap = barLabelGap();
-  // las dos columnas empiezan en 78 y 244: la barra de la primera tiene que
-  // acabar antes de la etiqueta de la segunda, y ambas se pintan igual de anchas
+  // The two columns start at 78 and 244: the first bar must
+  // end before the second column's label, and both bars must have the same width
   int bw = 232 - (78 + gap);
-  if (bw > 100) bw = 100;   // con etiquetas latinas sale 100, como estaba
+  if (bw > 100) bw = 100;   // With Latin labels, the result is 100 as before
   int bx = x + gap, bh = 15;
   uint16_t fill = (val >= 50) ? UI_BAR_OK : (val >= 25) ? UI_BAR_WARN : UI_BAR_BAD;
   gfx->fillRoundRect(bx, y, bw, bh, 4, UI_TRACK);
@@ -2717,7 +2717,7 @@ void drawBar(int x, int y, const char *label, uint8_t val) {
 
 void drawButtons() {
   for (int i = 0; i < 4; i++) {
-    bool off = pet.sleeping && i != 2;  // durmiendo solo funciona LUZ
+    bool off = pet.sleeping && i != 2;  // Only LIGHT works while sleeping
     int bx = buttons[i].cx - BTN_HALF, by = buttons[i].cy - BTN_HALF;
     if (!pet.sleeping) gfx->fillRoundRect(bx, by, 2 * BTN_HALF, 2 * BTN_HALF, 14, UI_WHITE);
     gfx->drawRoundRect(bx, by, 2 * BTN_HALF, 2 * BTN_HALF, 14, inkColor());
@@ -2748,7 +2748,7 @@ const char *statusMsg() {
   return T(S_HAPPY);
 }
 
-// dibuja un mapa de n x n pixeles escalado; silhouette=true lo pinta en tinta
+// Draw an n x n pixel map at the requested scale; silhouette=true draws it as a solid silhouette
 void drawMap(const char *const *map, int n, int x, int y, int s, bool silhouette) {
   for (int r = 0; r < n; r++) {
     const char *row = map[r];
