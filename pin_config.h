@@ -25,30 +25,30 @@
 #define LCD_SDIO3       41
 #define LCD_TE          18
 #define LCD_BL          5
-#define LCD_RESET       (-1)   // Reset ueber TCA9554 EXIO2
+#define LCD_RESET       (-1)   // Reset through TCA9554 EXIO2
 
-// Touch – CST816, separater I2C-Bus
+// Touch – CST816, separate I2C bus
 #define TP_IIC_SDA      1
 #define TP_IIC_SCL      3
 #define TP_INT          4
-#define TP_RESET        (-1)   // Reset ueber TCA9554 EXIO1
+#define TP_RESET        (-1)   // Reset through TCA9554 EXIO1
 #define CST816_ADDR     0x15
 
-// RTC und Sensoren – gemeinsamer I2C-Bus
+// RTC and sensors – shared I2C bus
 #define IIC_SDA         11
 #define IIC_SCL         10
 #define RTC_ADDR        0x51
 #define RTC_INT         9
 
-// Hardware-PWR-Taste / Batterie-Versorgung (laut Waveshare-Schaltplan)
-#define PWR_KEY_PIN     6   // Key BAT, aktiv LOW
-#define BAT_CTRL_PIN    7   // BAT Control, HIGH = Versorgung halten
-#define BAT_ADC_PIN     8   // BAT_ADC ueber 200K/100K-Spannungsteiler (Faktor 3)
+// Hardware PWR button / battery power control (according to the Waveshare schematic)
+#define PWR_KEY_PIN     6   // Key BAT, active LOW
+#define BAT_CTRL_PIN    7   // BAT Control, HIGH = keep power enabled
+#define BAT_ADC_PIN     8   // BAT_ADC through a 200K/100K voltage divider (factor 3)
 #define IMU_SDA         IIC_SDA
 #define IMU_SCL         IIC_SCL
 #define IMU_ADDR        0x6B
 
-// TCA9554PWR – GPIO-Expander
+// TCA9554PWR – GPIO expander
 #define TCA9554_ADDR    0x20
 #define EXIO_TP_RESET   1
 #define EXIO_LCD_RESET  2
@@ -56,28 +56,28 @@
 #define EXIO_IMU_INT2   4
 #define EXIO_IMU_INT1   5
 
-// microSD / TF-Karte – SDMMC 1-Bit
+// microSD / TF card – SDMMC 1-bit
 #define SDMMC_CLK       14
 #define SDMMC_CMD       17
 #define SDMMC_D0        16
 
-// Bestehende sdmon.cpp-Namen beibehalten:
+// Keep existing names used by sdmon.cpp:
 #define SD_SCLK         SDMMC_CLK
 #define SD_MOSI         SDMMC_CMD
 #define SD_MISO         SDMMC_D0
 #define SD_CS           (-1)
 
-// Audio – PCM5101 I2S-DAC
+// Audio – PCM5101 I2S DAC
 #define I2S_DOUT        47
 #define I2S_LRCK        38
 #define I2S_BCLK        48
 
-// Mikrofonanschluesse
+// Microphone connections
 #define MIC_WS          2
 #define MIC_SCK         15
 #define MIC_SD          39
 
-// Speicher und Board-Eigenschaften
+// Memory and board properties
 #define BOARD_FLASH_SIZE    (16UL * 1024UL * 1024UL)
 #define BOARD_PSRAM_SIZE    (8UL * 1024UL * 1024UL)
 
