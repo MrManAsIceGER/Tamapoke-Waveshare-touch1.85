@@ -70,7 +70,7 @@ static bool readRegister(uint8_t reg, uint8_t &value)
 
 
 // ------------------------------------------------------------
-// Initialisierung
+// Initialization
 // ------------------------------------------------------------
 
 bool tca9554Begin(TwoWire &wire)
@@ -90,9 +90,9 @@ bool tca9554Begin(TwoWire &wire)
         return false;
     }
 
-    // Reset-Ausgänge:
-    // EXIO1 = Touch-Reset
-    // EXIO2 = LCD-Reset
+    // Reset outputs:
+    // EXIO1 = touch reset
+    // EXIO2 = LCD reset
     uint8_t resetMask = 0;
 
     uint8_t mask;
@@ -107,17 +107,17 @@ bool tca9554Begin(TwoWire &wire)
     }
     resetMask |= mask;
 
-    // Reset-Leitungen zunächst auf HIGH setzen.
-    // HIGH bedeutet: Reset nicht aktiv.
+    // Set the reset lines HIGH first.
+    // HIGH means reset is inactive.
     outputState = output | resetMask;
 
     // Ausgangszustand zuerst schreiben, damit beim Umschalten
-    // der Pins auf Ausgang kein ungewollter LOW-Impuls entsteht.
+    // the pins are switched to output mode, avoiding an unintended LOW pulse.
     if (!writeRegister(REG_OUTPUT, outputState)) {
         return false;
     }
 
-    // Nur die Reset-Pins als Ausgänge konfigurieren.
+    // Configure only the reset pins as outputs.
     // Alle anderen Pinrichtungen bleiben unverändert.
     config &= (uint8_t)~resetMask;
 
@@ -131,7 +131,7 @@ bool tca9554Begin(TwoWire &wire)
 
 
 // ------------------------------------------------------------
-// Ausgang setzen
+// Set output
 // ------------------------------------------------------------
 
 bool tca9554SetPin(uint8_t exio, bool level)
@@ -157,7 +157,7 @@ bool tca9554SetPin(uint8_t exio, bool level)
 
 
 // ------------------------------------------------------------
-// Eingang lesen
+// Read input
 // ------------------------------------------------------------
 
 bool tca9554ReadPin(uint8_t exio, bool &level)
@@ -184,7 +184,7 @@ bool tca9554ReadPin(uint8_t exio, bool &level)
 
 
 // ------------------------------------------------------------
-// Reset-Impuls
+// Reset pulse
 // ------------------------------------------------------------
 
 bool tca9554PulseReset(
@@ -196,14 +196,14 @@ bool tca9554PulseReset(
         return false;
     }
 
-    // Reset aktivieren.
+    // Assert reset.
     if (!tca9554SetPin(exio, LOW)) {
         return false;
     }
 
     delay(lowMs);
 
-    // Reset freigeben.
+    // Release reset.
     if (!tca9554SetPin(exio, HIGH)) {
         return false;
     }
