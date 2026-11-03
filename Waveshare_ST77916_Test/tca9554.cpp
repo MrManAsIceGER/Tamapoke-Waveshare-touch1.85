@@ -51,7 +51,7 @@ bool tca9554Begin(TwoWire &wire)
     output |= RESET_PINS_MASK;
     if (!writeRegister(REG_OUTPUT, output)) return false;
 
-    // Nur EXIO1 und EXIO2 als Ausgaenge konfigurieren. Andere Expander-Pins bleiben unveraendert.
+    // Configure only EXIO1 and EXIO2 as outputs. Leave all other expander pins unchanged.
     config &= (uint8_t)~RESET_PINS_MASK;
     if (!writeRegister(REG_CONFIG, config)) return false;
 
