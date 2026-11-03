@@ -8,7 +8,7 @@ static constexpr uint8_t REG_OUTPUT    = 0x01;
 static constexpr uint8_t REG_POLARITY  = 0x02;
 static constexpr uint8_t REG_CONFIG    = 0x03;
 
-// TCA9554-Pinrichtung:
+// TCA9554 pin directions:
 // EXIO1 = P0, EXIO2 = P1, ... EXIO8 = P7.
 
 static TwoWire *tcaWire = nullptr;
@@ -17,7 +17,7 @@ static bool initialized = false;
 
 
 // ------------------------------------------------------------
-// Interne Hilfsfunktionen
+// Internal helper functions
 // ------------------------------------------------------------
 
 static bool exioToMask(uint8_t exio, uint8_t &mask)
@@ -70,7 +70,7 @@ static bool readRegister(uint8_t reg, uint8_t &value)
 
 
 // ------------------------------------------------------------
-// Initialisierung
+// Initialization
 // ------------------------------------------------------------
 
 bool tca9554Begin(TwoWire &wire)
@@ -81,7 +81,7 @@ bool tca9554Begin(TwoWire &wire)
     uint8_t config;
     uint8_t output;
 
-    // Prüfen, ob der Expander erreichbar ist.
+    // Check whether the expander is reachable.
     if (!readRegister(REG_CONFIG, config)) {
         return false;
     }
@@ -90,9 +90,9 @@ bool tca9554Begin(TwoWire &wire)
         return false;
     }
 
-    // Reset-Ausgänge:
-    // EXIO1 = Touch-Reset
-    // EXIO2 = LCD-Reset
+    // Reset outputs:
+    // EXIO1 = touch reset
+    // EXIO2 = LCD reset
     uint8_t resetMask = 0;
 
     uint8_t mask;
@@ -107,18 +107,18 @@ bool tca9554Begin(TwoWire &wire)
     }
     resetMask |= mask;
 
-    // Reset-Leitungen zunächst auf HIGH setzen.
-    // HIGH bedeutet: Reset nicht aktiv.
+    // Set the reset lines HIGH first.
+    // HIGH means reset is inactive.
     outputState = output | resetMask;
 
-    // Ausgangszustand zuerst schreiben, damit beim Umschalten
-    // der Pins auf Ausgang kein ungewollter LOW-Impuls entsteht.
+    // Write the initial output state before switching
+    // the pins to output mode, avoiding an unintended LOW pulse.
     if (!writeRegister(REG_OUTPUT, outputState)) {
         return false;
     }
 
-    // Nur die Reset-Pins als Ausgänge konfigurieren.
-    // Alle anderen Pinrichtungen bleiben unverändert.
+    // Configure only the reset pins as outputs.
+    // Leave all other pin directions unchanged.
     config &= (uint8_t)~resetMask;
 
     if (!writeRegister(REG_CONFIG, config)) {
@@ -131,7 +131,7 @@ bool tca9554Begin(TwoWire &wire)
 
 
 // ------------------------------------------------------------
-// Ausgang setzen
+// Set output
 // ------------------------------------------------------------
 
 bool tca9554SetPin(uint8_t exio, bool level)
@@ -157,7 +157,7 @@ bool tca9554SetPin(uint8_t exio, bool level)
 
 
 // ------------------------------------------------------------
-// Eingang lesen
+// Read input
 // ------------------------------------------------------------
 
 bool tca9554ReadPin(uint8_t exio, bool &level)
@@ -184,7 +184,7 @@ bool tca9554ReadPin(uint8_t exio, bool &level)
 
 
 // ------------------------------------------------------------
-// Reset-Impuls
+// Reset pulse
 // ------------------------------------------------------------
 
 bool tca9554PulseReset(
@@ -196,14 +196,14 @@ bool tca9554PulseReset(
         return false;
     }
 
-    // Reset aktivieren.
+    // Assert reset.
     if (!tca9554SetPin(exio, LOW)) {
         return false;
     }
 
     delay(lowMs);
 
-    // Reset freigeben.
+    // Release reset.
     if (!tca9554SetPin(exio, HIGH)) {
         return false;
     }
