@@ -588,6 +588,13 @@ void handleTouch() {
   int16_t x, y;
   bool pressed = touch.getPoint(&x, &y, 1) > 0;
 
+  // Diagnostik: einen Datensatz pro neuem Fingerdruck ausgeben.
+  // Die Werte sind bereits auf den logischen Spielraum 466x466 transformiert.
+  if (pressed && !wasPressed) {
+    Serial.printf("[TOUCH] DOWN x=%d y=%d  INT=%d\\n",
+                  x, y, digitalRead(TP_INT));
+  }
+
   // saco de entrenamiento: cada toque cuenta al instante (aporrear rapido)
   if (sackOpen) {
     if (pressed && !wasPressed) {
@@ -621,6 +628,8 @@ void handleTouch() {
     wakeUI();
     int dx = tXl - tX0, dy = tYl - tY0;
     uint32_t dt = millis() - tStart;
+    Serial.printf("[TOUCH] UP start=%d,%d last=%d,%d delta=%d,%d dt=%lu\\n",
+                  tX0, tY0, tXl, tYl, dx, dy, (unsigned long)dt);
     if (!holdFired && !swallowGesture) {
       if (abs(dx) > 80 && abs(dy) < 70 && dt < 800) onSwipe(dx > 0 ? 1 : -1);
       else if (abs(dy) > 80 && abs(dx) < 70 && dt < 800) onSwipeV(dy > 0 ? 1 : -1);
