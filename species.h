@@ -45,7 +45,7 @@ struct Species {
   uint16_t accent;     // type accent color for the UI
 };
 
-// caracter de sprite -> RGB565
+// Sprite character -> RGB565
 static inline uint16_t spriteColor(char ch) {
   switch (ch) {
     case 'k': return 0x18C4;  // #1b1b25
