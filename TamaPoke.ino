@@ -959,7 +959,7 @@ void renderStarterSelect() {
   gfx->flush();
 }
 
-// ---------- texto: tamano y cursor (preparado para fuentes CJK) ----------
+// ---------- Text: size and cursor (prepared for CJK fonts) ----------
 // The classic font anchors the cursor at the TOP LEFT of the text, and all 74
 // Y coordinates in the code are written with that assumption. U8g2 fonts anchor at the
 // BASELINE (drawChar sets curY = y - baseline*size), so switching fonts would move
