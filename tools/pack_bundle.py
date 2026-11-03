@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Empaqueta todos los sprites de la SD (tools/sdcard/mons/*.bin) into a single
+"""Pack all SD sprites (tools/sdcard/mons/*.bin) into one
 web/sprites.pak file so the web installer can upload them in one click.
 
-Formato TPAK (little-endian):
+TPAK format (little-endian):
   char[4]  "TPAK"
   uint16   count
-  count x { uint8 nameLen; char name[nameLen]; uint32 size }   (indice)
+  count x { uint8 nameLen; char name[nameLen]; uint32 size }   (index)
   ...data for each file, in the same order...
 
-The installer (web/index.html) downloads it, splits it by index, and sends each
+The installer (web/index.html) downloads the bundle, splits it by index, and sends each
 file to the board using the PUT protocol (same as tools/send_sd.py).
 """
 import glob
