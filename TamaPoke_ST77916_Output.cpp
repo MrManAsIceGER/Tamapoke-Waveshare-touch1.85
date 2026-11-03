@@ -3,15 +3,15 @@
 #include "Display_ST77916.h"
 
 /*
- * TamaPoke zeichnet weiterhin im originalen Koordinatensystem 466 x 466.
- * Das physische Waveshare-Display hat 360 x 360 Pixel.
+ * TamaPoke continues to use its original 466 x 466 coordinate system.
+ * The physical Waveshare display has a resolution of 360 x 360 pixels.
  *
- * Der Arduino_Canvas uebergibt beim flush() den kompletten 466x466-RGB565-
- * Frame. Wir skalieren ihn hier per Nearest-Neighbor auf 360x360 und senden
- * maximal 22 Zeilen pro DMA-Transfer (360 * 22 * 2 = 15.840 Byte).
+ * During flush(), Arduino_Canvas passes the complete 466x466 RGB565 frame.
+ * This adapter scales it to 360x360 using nearest-neighbor sampling and sends
+ * at most 22 rows per DMA transfer (360 * 22 * 2 = 15,840 bytes).
  *
- * LCD_addWindow() vertauscht die Byte-Reihenfolge im Puffer in-place.
- * Deshalb wird jeder Teilframe in einen eigenen DMA-Puffer kopiert.
+ * LCD_addWindow() swaps the byte order in the buffer in-place.
+ * Therefore, each chunk is copied into its own DMA buffer.
  */
 namespace {
 constexpr int16_t LCD_W = EXAMPLE_LCD_WIDTH;
