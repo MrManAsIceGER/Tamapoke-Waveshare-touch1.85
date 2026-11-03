@@ -96,7 +96,8 @@ bool gameOpen = false;
 uint32_t gameOverUntil = 0;
 float ballX, ballY, ballVX, ballVY, gamePetX;
 uint32_t lastGameStep = 0;  // ultima llamada a stepGame(): fisica por tiempo real, no por frame
-uint8_t gameScore, gameMisses;
+uint16_t gameScore = 0;
+uint8_t gameMisses = 0;
 float hitX, hitY;             // ultimo golpe (anillo de impacto)
 uint32_t hitTime = 0;
 bool gameNewHi = false;
@@ -1302,7 +1303,8 @@ void gameTap(int16_t x, int16_t y) {
   // Beruehrungen ausserhalb der Trefferzone bleiben wirkungslos.
   float dx = ballX - x, dy = ballY - y;
   if (dx * dx + dy * dy < 74 * 74) {  // toque a la bola!
-    gameScore++;
+    // 16-Bit-Zaehler: bei 65535 saettigen statt auf 0 ueberlaufen.
+    if (gameScore < 0xFFFFU) gameScore++;
     sfxPlay(SFX_PLAY);
     // golpe mas suave: impulso moderado que crece poco a poco con la puntuacion
     float lift = 6.6f + (gameScore > 16 ? 3.5f : gameScore * 0.22f);
@@ -1496,7 +1498,7 @@ void renderGame() {
       return;
     }
     char buf[22];
-    snprintf(buf, sizeof(buf), T(S_SCORE_FMT), gameScore);
+    snprintf(buf, sizeof(buf), T(S_SCORE_FMT), (unsigned)gameScore);
     gfx->setTextColor(ink);
     setSize(4);
     setCur(centerX(buf, 4), 160);
@@ -1526,7 +1528,7 @@ void renderGame() {
 
   // marcador, record y vidas
   char buf[8];
-  snprintf(buf, sizeof(buf), "%u", gameScore);
+  snprintf(buf, sizeof(buf), "%u", (unsigned)gameScore);
   gfx->setTextColor(ink);
   setSize(4);
   setCur(centerX(buf, 4), 30);
