@@ -433,7 +433,7 @@ void LCD_addWindow(uint16_t Xstart, uint16_t Ystart, uint16_t Xend, uint16_t Yen
   esp_err_t drawResult =
       esp_lcd_panel_draw_bitmap(panel_handle, Xstart, Ystart, Xend, Yend, color);
   if (drawResult == ESP_OK && !lcdWaitForColorTransfer()) {
-    // Sicherheitsnetz, falls der Completion-Callback ausbleibt.
+    // Fallback safeguard in case the completion callback does not arrive.
     delay(5);
   } // x_end End index on x-axis (x_end not included)
 }
