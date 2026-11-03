@@ -5,7 +5,7 @@ constexpr uint8_t TCA9554_ADDRESS = 0x20;
 constexpr uint8_t REG_INPUT       = 0x00;
 constexpr uint8_t REG_OUTPUT      = 0x01;
 constexpr uint8_t REG_CONFIG      = 0x03;
-constexpr uint8_t RESET_PINS_MASK = 0x03; // EXIO1 Touch-Reset, EXIO2 LCD-Reset
+constexpr uint8_t RESET_PINS_MASK = 0x03; // EXIO1 touch reset, EXIO2 LCD reset
 
 TwoWire *gWire = nullptr;
 uint8_t gOutputState = 0xFF;
