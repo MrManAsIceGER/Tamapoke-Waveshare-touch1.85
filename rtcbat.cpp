@@ -119,10 +119,6 @@ bool batShouldShutdown() {
   return false;
 }
 
-void batPowerOff() {
-  // Keine programmatische PMU-Abschaltung verfügbar.
-}
-
 bool usbPresent() {
   // Konservativer Rückgabewert:
   // Verhindert, dass die vorhandene Spiel-Logik wegen
