@@ -1,6 +1,6 @@
-// Shim de la API Preferences (NVS de ESP32) en memoria.
-// Comparte un unico almacen global entre instancias, igual que la NVS real,
-// para poder testear guardado/carga y persistencia entre "arranques".
+// In-memory shim for the ESP32 Preferences (NVS) API.
+// All instances share one global store, just like the real NVS,
+// so save/load and persistence across simulated 'boots' can be tested.
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
@@ -40,6 +40,6 @@ private:
   bool ro_ = false;
 };
 
-// helpers de test: borra toda la "NVS" simulada
+// Test helpers: clear the entire simulated 'NVS'
 void mockNvsReset();
 size_t mockNvsKeyCount(const char *ns);
