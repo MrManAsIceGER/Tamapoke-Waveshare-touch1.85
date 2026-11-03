@@ -111,14 +111,14 @@ bool tca9554Begin(TwoWire &wire)
     // HIGH means reset is inactive.
     outputState = output | resetMask;
 
-    // Ausgangszustand zuerst schreiben, damit beim Umschalten
-    // the pins are switched to output mode, avoiding an unintended LOW pulse.
+    // Write the initial output state before switching
+    // the pins to output mode, avoiding an unintended LOW pulse.
     if (!writeRegister(REG_OUTPUT, outputState)) {
         return false;
     }
 
     // Configure only the reset pins as outputs.
-    // Alle anderen Pinrichtungen bleiben unverändert.
+    // Leave all other pin directions unchanged.
     config &= (uint8_t)~resetMask;
 
     if (!writeRegister(REG_CONFIG, config)) {
