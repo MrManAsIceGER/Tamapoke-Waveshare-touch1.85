@@ -960,55 +960,55 @@ void renderStarterSelect() {
 }
 
 // ---------- texto: tamano y cursor (preparado para fuentes CJK) ----------
-// La fuente clasica ancla el cursor en la ESQUINA SUPERIOR del texto, y las 74
-// coordenadas Y del codigo estan escritas asi. Las fuentes U8g2 lo anclan en la
-// LINEA BASE (drawChar hace curY = y - baseline*size), asi que al cambiar de
-// fuente todo el texto subiria. setCur() compensa esa diferencia en un solo
-// sitio, para que la Y siga significando "arriba" con cualquier fuente.
+// The classic font anchors the cursor at the TOP LEFT of the text, and all 74
+// Y coordinates in the code are written with that assumption. U8g2 fonts anchor at the
+// BASELINE (drawChar sets curY = y - baseline*size), so switching fonts would move
+// all text upward. setCur() compensates for this difference in one place,
+// so Y continues to mean 'top' with every font.
 //
-// setSize() existe solo porque la libreria tiene textsize_x protegido y setCur()
-// necesita saber la escala activa para multiplicar el ascenso.
+// setSize() exists because the library protects textsize_x and setCur()
+// needs the active scale to multiply the ascent.
 //
-// Con la fuente clasica gFontAscent es 0, asi que setCur(x,y) es exactamente
-// setCur(x,y): esto no mueve un pixel en los seis idiomas actuales.
+// With the classic font, gFontAscent is 0, so setCur(x,y) behaves exactly as before:
+// it does not move a single pixel in any of the six current languages.
 uint8_t gTextSize = 1;
-int gFontAscent = 0;  // px del borde superior a la linea base, 0 = fuente clasica
+int gFontAscent = 0;  // Distance in pixels from the top edge to the baseline; 0 = classic font
 
-// --- ajuste de la fuente CJK (los dos valores van juntos) ---
-// La fuente clasica mide 8 px de alto a escala 1. Si la CJK mide mas, hay que
-// dividir la escala para que los tamanos cuadren... pero dividir ADELGAZA el
-// trazo: a escala 1 la unifont pinta lineas de 1 px mientras el latino a escala
-// 2 las pinta de 2, y el japones se ve tenue aunque mida igual.
+// --- CJK font tuning (these two values must be changed together) ---
+// The classic font is 8 px high at scale 1. If a CJK font is taller, the scale must be
+// divided to keep sizes consistent. However, dividing THINS the strokes:
+// at scale 1 Unifont draws 1 px lines, while Latin text at scale
+// 2 draws 2 px lines, making Japanese look faint even at the same height.
 //
-// Por eso conviene una fuente base pequena Y EN NEGRITA (_b_), que permita usar
-// la MISMA escala que el latino: asi el grosor coincide y no hay que dividir.
+// A small, BOLD (_b_) base font is preferable because it allows the
+// SAME scale as Latin text, matching stroke thickness without dividing the scale.
 //
-// Se probo una fuente realmente negrita (b10_b) y NO sirve a este tamano: los
-// trazos se juntan y los kana pierden detalle, ilegibles incluso para un lector
-// nativo. Se vuelve a la unifont, que es la mas legible, y el trazo fino se
+// A truly bold font (b10_b) was tested and does NOT work at this size:
+// strokes merge and kana lose detail, becoming unreadable even to a native reader.
+// Unifont is the most legible choice, so it is retained despite its thin strokes.
 // compensa en printT() repintando 1 px desplazado (pseudo-negrita).
-// japanese3 y no japanese1: los subconjuntos 1 y 2 traen kana y kanji pero
-// NINGUNA puntuacion CJK, y Arduino_GFX no dibuja nada cuando le falta el
-// glifo (ni avanza el cursor), asi que los 25 signos ！ y ？ de las cadenas
-// desaparecian. Es la misma familia unifont: cabecera de metricas identica y
-// superconjunto estricto, comprobado glifo a glifo sobre los 226 codepoints
-// que usa el firmware. Cuesta 102 KB mas de flash y no mueve un pixel.
-// El coreano necesita una fuente con hangul, y CJK_FONT era un solo #define.
-// En vez de dar por hecho que un subconjunto sirve para las dos escrituras, la
-// fuente se elige por idioma. korean2 y no korean1: el coreano de aqui usa 296
-// silabas distintas y todas estan en KS X 1001, el conjunto de 2350 que es el
-// tamano medido para korean2; korean1 trae 478. La comprobacion mira la
-// pertenencia a KS X 1001, no recorre la tabla de la fuente, asi que se apoya
-// en que el conjunto de korean2 sea ese; el ASCII se da por presente.
-// Sin comprobar en placa: si CJK_SIZE_DIV 2 le sienta a korean2 igual que a la
-// japonesa. El ascenso si se mide en tiempo de ejecucion en applyLangFont().
+// Use japanese3 rather than japanese1: subsets 1 and 2 contain kana and kanji but
+// NO CJK punctuation. Arduino_GFX draws nothing when a glyph is missing
+// (and does not advance the cursor), so the 25 ！ and ？ marks in the strings
+// disappeared. This is the same Unifont family: identical metrics header and a
+// strict superset, verified glyph by glyph across the 226 code points
+// used by the firmware. It costs 102 KB of extra flash and moves no pixels.
+// Korean requires a Hangul font, while CJK_FONT was a single #define.
+// Rather than assuming one subset works for both writing systems, select the
+// font by language. Use korean2, not korean1: this Korean text uses 296
+// distinct syllables, all in KS X 1001, the 2350-character set included in korean2;
+// korean1 contains only 478. The check tests membership in KS X 1001 rather than
+// walking the font's glyph table, so it relies on korean2 containing that set;
+// ASCII is assumed to be present.
+// Not verified on hardware: whether CJK_SIZE_DIV 2 works for korean2 as it does for
+// Japanese. The ascent is measured at runtime in applyLangFont().
 #define CJK_FONT_JA u8g2_font_unifont_t_japanese3
 #define CJK_FONT_KO u8g2_font_unifont_t_korean2
 #define CJK_SIZE_DIV 2
 
 void setSize(uint8_t n) {
-  // gTextSize guarda la escala REALMENTE aplicada, no la pedida: setCur()
-  // multiplica el ascenso por ella y tiene que cuadrar con lo que se pinta.
+  // gTextSize stores the scale ACTUALLY applied, not the requested value: setCur()
+  // multiplies the ascent by it, so it must match what is drawn.
   gTextSize = gCjkFont ? (n >= CJK_SIZE_DIV ? n / CJK_SIZE_DIV : 1) : n;
   gfx->setTextSize(gTextSize);
 }
@@ -1017,41 +1017,41 @@ void setCur(int x, int y) {
   gfx->setCursor(x, y + gFontAscent * gTextSize);
 }
 
-// Fija la fuente del idioma activo. Es el UNICO sitio que la toca: el resto del
-// codigo dibuja igual para todos los idiomas gracias a textW()/setCur().
+// Set the active language font. This is the ONLY place that changes it; the rest of the
+// code draws identically for every language thanks to textW()/setCur().
 //
-// El ascenso se mide en vez de codificarlo: getTextBounds() devuelve y1 como
-// desplazamiento del borde superior respecto al cursor, negativo con las fuentes
-// U8g2 (que anclan en la linea base). Asi setCur() puede seguir tratando la Y
-// como "arriba" sea cual sea la fuente, sin constantes magicas por fuente.
+// Measure ascent instead of hard-coding it: getTextBounds() returns y1 as the
+// top-edge offset relative to the cursor; it is negative for
+// U8g2 fonts (which use baseline anchoring). This lets setCur() continue treating Y
+// as the 'top' regardless of font, without font-specific magic constants.
 void applyLangFont() {
   gCjkFont = LANG_IS_CJK(gLang);
   if (!gCjkFont) {
-    gfx->setFont();            // 5x7 clasica, CP437: la Y ya es el borde superior
+    gfx->setFont();            // Classic 5x7 CP437 font: Y already marks the top edge
     gfx->setUTF8Print(false);
     gFontAscent = 0;
     return;
   }
   gfx->setFont((gLang == LANG_KO) ? CJK_FONT_KO : CJK_FONT_JA);
-  gfx->setUTF8Print(true);     // las cadenas CJK son UTF-8 multibyte
+  gfx->setUTF8Print(true);     // CJK strings use multibyte UTF-8
   int16_t x1, y1;
   uint16_t w, h;
   uint8_t antes = gTextSize;
   gfx->setTextSize(1);
   gfx->getTextBounds("A", 0, 0, &x1, &y1, &w, &h);
-  gFontAscent = -y1;           // y1 negativo: subir desde la linea base
+  gFontAscent = -y1;           // Negative y1: move upward from the baseline
   gfx->setTextSize(antes);
 }
 
-// ---------- medida de texto (preparado para fuentes CJK) ----------
-// La fuente clasica de Arduino_GFX avanza 6 px por caracter a tamano 1, y la UI
-// centraba con strlen(s)*6*n a pelo. Eso solo vale para un byte por caracter y
-// ancho fijo: con una fuente U8g2 para japones/coreano/chino, ni strlen() cuenta
-// caracteres (UTF-8 es multibyte) ni todos miden lo mismo. Centralizarlo aqui es
-// lo que permitira anadir esos idiomas sin tocar cada punto de dibujado.
+// ---------- Text measurement (prepared for CJK fonts) ----------
+// The classic Arduino_GFX font advances 6 px per character at size 1, and the UI
+// used to center text with strlen(s)*6*n. That works only for single-byte characters
+// with fixed width. With a U8g2 font for Japanese/Korean/Chinese, strlen() does not count
+// characters (UTF-8 is multibyte) and character widths vary. Centralizing this here
+// will allow those languages to be added without changing every drawing call.
 //
-// Para la fuente clasica devuelve EXACTAMENTE la misma cuenta que habia antes,
-// asi que este cambio no mueve un pixel en los seis idiomas actuales.
+// For the classic font, this returns EXACTLY the same width as before,
+// so this change does not move a single pixel in the six current languages.
 uint16_t textW(const char *s, uint8_t size) {
   if (!gCjkFont) return (uint16_t)strlen(s) * 6 * size;
   int16_t x1, y1;
@@ -1060,15 +1060,15 @@ uint16_t textW(const char *s, uint8_t size) {
   return w;
 }
 
-// x del cursor para dejar el texto centrado en CX
+// Cursor X position used to center text at CX
 int centerX(const char *s, uint8_t size) { return CX - textW(s, size) / 2; }
 
-// Imprime respetando la fuente activa. Con la CJK repinta el texto desplazado
-// 1 px: la unifont a escala reducida deja trazos de 1 px y se ve tenue, y una
-// fuente de verdad negrita a este tamano junta los trazos y estropea los kana.
-// Repintar engorda el trazo sin deformar el glifo. Probado en placa por
-// usakomint, que comparo las dos opciones en japones.
-// El teclado de apodos es solo alfabeto (se deja asi a proposito), de modo que
+// Print using the active font. For CJK, redraw the text offset by
+// 1 px: reduced-scale Unifont leaves 1 px strokes that look faint, while a truly
+// bold font at this size merges strokes and damages kana.
+// Redrawing thickens the stroke without distorting the glyph. Tested on hardware by
+// usakomint, who compared both options in Japanese.
+// The nickname keyboard uses the Latin alphabet only (intentionally), so
 // aqui nunca hay CJK y no hace falta engordar nada.
 void printT(char c) { gfx->print(c); }
 
@@ -1081,13 +1081,13 @@ void printT(const char *s) {
   gfx->print(s);
 }
 
-// Pantallas que solo cambian con un toque (o con un dato que cambia muy de vez en cuando):
-// mientras su "clave" no cambie no se repintan ni se vuelcan por QSPI.
+// Screens that change only after a touch (or an occasional data change):
+// while their 'key' remains unchanged, they are not redrawn or sent over QSPI.
 static bool staticScreen() {
   if (pet.awaitingStarter()) return true;
-  if (galleryOpen || gameOpen || sackOpen) return false;  // la galeria gestiona su propio repintado
+  if (galleryOpen || gameOpen || sackOpen) return false;  // The gallery manages its own redraws
   if (kbOpen || clockOpen) return true;
-  return cardOpen && cardPage != 0;  // la pagina 0 tiene el retrato animado
+  return cardOpen && cardPage != 0;  // Page 0 contains the animated portrait
 }
 static uint32_t mixKey(uint32_t h, uint32_t v) { return (h ^ v) * 16777619u; }
 static uint32_t screenKey() {
@@ -1113,10 +1113,10 @@ static uint32_t screenKey() {
   }
   return h;
 }
-bool screenKeyValid = false;  // (el renderer del host lo invalida entre escenas)
+bool screenKeyValid = false;  // (the host renderer invalidates it between scenes)
 uint32_t lastScreenKey = 0;
 
-// Dibuja un frame y devuelve true si lo ha volcado al panel.
+// Draw one frame and return true if it was sent to the panel.
 bool render() {
   if (staticScreen()) {
     uint32_t k = screenKey();
@@ -1126,7 +1126,7 @@ bool render() {
   } else {
     screenKeyValid = false;
   }
-  if (pet.awaitingStarter()) {  // primera partida: elegir inicial (prioridad total)
+  if (pet.awaitingStarter()) {  // First run: choose a starter (highest priority)
     renderStarterSelect();
     return true;
   }
@@ -1156,8 +1156,8 @@ bool render() {
   }
   int h = sceneHour();
   gNight = pet.sleeping || h < 6 || h >= 20;
-  // drawScene cubre los 466x466 completos: sin fillScreen(NEGRO) previo para
-  // que un flush DMA solapado nunca capture negro a medias (anti-parpadeo)
+  // drawScene covers the full 466x466 canvas: do not call fillScreen(BLACK) first,
+  // so an overlapping DMA flush never captures a partially cleared black frame (anti-flicker)
   drawScene(pet.isEgg() ? 0 : DEX_TBL[pet.speciesId].biome, millis(), gNight);
 
   if (pet.ceremony) {
@@ -1203,7 +1203,7 @@ bool render() {
     drawPet();
     drawBath();
     drawPoops();
-    // panel inferior: base limpia para barras y botones sobre el paisaje
+    // Bottom panel: clean background for bars and buttons over the landscape
     gfx->fillRect(0, 312, 466, 154, gNight ? UI_BG_NIGHT : UI_BG_DAY);
     drawBars();
     drawButtons();
@@ -1234,16 +1234,16 @@ bool render() {
     }
   }
 
-  // dialogo "soltar?" (pulsacion larga sobre el bicho)
+  // 'Release?' dialog (long press on the pet)
   if (confirmUntil) {
     if (!timeLeft(confirmUntil)) {
       confirmUntil = 0;
     } else {
       gfx->fillRoundRect(94, 168, 278, 152, 16, UI_WHITE);
       gfx->drawRoundRect(94, 168, 278, 152, 16, UI_INK);
-      // 48 y no 28: el buffer se dimensiono cuando toda cadena era de un byte
-      // por caracter. Con una fila UTF-8, "%s 놓아줄까요?" mas el nombre pasa
-      // de 28 y snprintf corta a mitad de una secuencia de 3 bytes, que la
+      // 48 instead of 28: the buffer was sized when every string used one byte
+      // per character. With a UTF-8 row, "%s 놓아줄까요?" plus the name exceeds
+      // 28 bytes and snprintf would cut through a 3-byte sequence, corrupting the text.
       // fuente ya no sabe dibujar.
       char q[48];
       snprintf(q, sizeof(q), T(S_RELEASE_FMT), dexName(pet.speciesId));
@@ -1271,7 +1271,7 @@ bool render() {
   return true;
 }
 
-// ---------- minijuego: toques con la pokeball ----------
+// ---------- Mini-game: tap the Poké Ball ----------
 
 void startGame() {
   if (pet.isEgg() || pet.sleeping || pet.ceremony) return;
@@ -1298,15 +1298,15 @@ void respawnBall() {
 void gameTap(int16_t x, int16_t y) {
   if (gameOverUntil) return;
 
-  // Das Minispiel kann nicht mehr durch Beruehren der Kopfzeile verlassen
-  // werden. Es endet ausschliesslich nach drei verlorenen Leben.
+  // The mini-game can no longer be exited by touching the header.
+  // It ends only after all three lives are lost.
   // Beruehrungen ausserhalb der Trefferzone bleiben wirkungslos.
   float dx = ballX - x, dy = ballY - y;
-  if (dx * dx + dy * dy < 74 * 74) {  // toque a la bola!
+  if (dx * dx + dy * dy < 74 * 74) {  // Tap the ball!
     // 16-Bit-Zaehler: bei 65535 saettigen statt auf 0 ueberlaufen.
     if (gameScore < 0xFFFFU) gameScore++;
     sfxPlay(SFX_PLAY);
-    // golpe mas suave: impulso moderado que crece poco a poco con la puntuacion
+    // Softer hit: a moderate impulse that grows gradually with the score
     float lift = 6.6f + (gameScore > 16 ? 3.5f : gameScore * 0.22f);
     ballVY = -lift;
     ballVX += dx * 0.12f;
@@ -1320,22 +1320,22 @@ void gameTap(int16_t x, int16_t y) {
 
 void stepGame() {
   uint32_t now = millis();
-  // paso relativo a 85 ms, el periodo de frame con el que se afinaron estas
-  // constantes (ver el planificador de render en loop()): sin esto la fisica
-  // avanzaba "un paso por frame" y el juego iba mas rapido o mas lento segun
-  // lo que tardara en dibujarse el frame anterior, que depende del tamano del
-  // sprite cargado. Con un Charizard la bola caia mas despacio que con un
+  // Physics step relative to 85 ms, the frame period used to tune these
+  // constants (see the render scheduler in loop()). Without this, physics
+  // advanced once per frame and the game speed changed with render time,
+  // which depends on the size of the loaded sprite. With Charizard, the ball fell more slowly
+  // than with Diglett, so records were not comparable across species.
   // Diglett, asi que el record no era comparable entre especies.
   float k = lastGameStep ? (now - lastGameStep) / 85.0f : 1.0f;
-  if (k > 3.0f) k = 3.0f;  // frame anormalmente tardio: no dar un salto enorme
+  if (k > 3.0f) k = 3.0f;  // Unusually late frame: do not make a huge jump
   lastGameStep = now;
 
-  float grav = 0.40f + gameScore * 0.013f;  // cae un poco mas rapido cada vez
+  float grav = 0.40f + gameScore * 0.013f;  // Gravity increases slightly as the score rises
   if (grav > 0.80f) grav = 0.80f;
   ballVY += grav * k;
   ballX += ballVX * k;
   ballY += ballVY * k;
-  // rebote en la pared circular
+  // Bounce off the circular wall
   float dx = ballX - CX, dy = ballY - CY;
   float d = sqrtf(dx * dx + dy * dy);
   if (d > 205) {
@@ -1351,21 +1351,21 @@ void stepGame() {
   if (ballY > 384) {  // al suelo
     if (++gameMisses >= 3) {
       gameNewHi = (gameScore > pet.gameHi);
-      pet.playResult(gameScore);  // actualiza el record y da felicidad
+      pet.playResult(gameScore);  // Update the record and increase happiness
       sfxPlay(gameNewHi && gameScore > 0 ? SFX_MEDAL : SFX_LEVEL);
       gameOverUntil = millis() + 4000;
     } else {
       respawnBall();
     }
   }
-  // el bicho la sigue por abajo
+  // The pet follows the ball below
   float chase = (ballX - gamePetX) * 0.12f;
   if (chase > 7) chase = 7;
   if (chase < -7) chase = -7;
   gamePetX += chase * k;
 }
 
-// ---------- saco de entrenamiento (entrena la fuerza) ----------
+// ---------- Training bag (builds strength) ----------
 
 void startSack() {
   if (pet.isEgg() || pet.sleeping || pet.ceremony) return;
@@ -1378,20 +1378,20 @@ void startSack() {
 }
 
 void sackTap() {
-  if (!timeLeft(sackUntil)) return;  // ya termino el tiempo
+  if (!timeLeft(sackUntil)) return;  // Time has run out
   sackHits++;
-  sackShake = 16;  // sacude el saco
+  sackShake = 16;  // Shake the bag
 }
 
-void drawGameScene();  // prototipo (definida mas abajo)
+void drawGameScene();  // Prototype (defined below)
 
 void renderSack() {
   uint32_t now = millis();
-  drawGameScene();  // fondo del habitat
+  drawGameScene();  // Habitat background
   bool night = sceneHour() < 6 || sceneHour() >= 20;
   uint16_t ink = night ? UI_INK_NIGHT : UI_INK;
 
-  // pantalla de resultado
+  // Result screen
   if (sackOverUntil) {
     if (!timeLeft(sackOverUntil)) { sackOpen = false; return; }
     char b[20];
@@ -1422,7 +1422,7 @@ void renderSack() {
     return;
   }
 
-  // se acabaron los 10 s: aplicar entrenamiento
+  // The 10 seconds are over: apply training
   if (!timeLeft(sackUntil)) {
     sackNewHi = (sackHits > pet.strHi);
     sackGain = pet.trainStrength(sackHits);
@@ -1455,7 +1455,7 @@ void renderSack() {
   setCur(centerX(T(S_HIT_FAST), 2), 322);
   printT(T(S_HIT_FAST));
 
-  // barra de tiempo
+  // Time bar
   uint32_t left = sackUntil - now;
   int bw = 280, fw = (int)((uint32_t)bw * left / 10000);
   gfx->fillRoundRect(CX - bw / 2, 350, bw, 16, 5, UI_TRACK);
@@ -1464,7 +1464,7 @@ void renderSack() {
   gfx->flush();
 }
 
-// fondo del minijuego: hatibat del bicho (cielo por hora + suelo del bioma)
+// Mini-game background: the pet's habitat (sky based on time + biome ground)
 void drawGameScene() {
   int hh = sceneHour();
   bool night = hh < 6 || hh >= 20;
@@ -1485,9 +1485,9 @@ void drawGameScene() {
 }
 
 void renderGame() {
-  // sin fillScreen(NEGRO): drawGameScene cubre los 466x466 completos. Si el
-  // DMA del flush anterior aun lee el buffer, vera contenido valido (no negro
-  // a medio pintar), que era el parpadeo a 25 fps.
+  // Do not call fillScreen(BLACK): drawGameScene covers the full 466x466 canvas. If the
+  // previous DMA flush is still reading the buffer, it will see valid content rather than black
+  // pixels halfway through a redraw; this prevents the 25 fps flicker.
   bool night = sceneHour() < 6 || sceneHour() >= 20;
   uint16_t ink = night ? UI_INK_NIGHT : UI_INK;
 
@@ -1533,9 +1533,9 @@ void renderGame() {
   setSize(4);
   setCur(centerX(buf, 4), 30);
   printT(buf);
-  // 24 y no 12: en japones "きろく %u" son 10 bytes antes de la cifra y el
-  // record se quedaba en su primer digito ("きろく 2" con 219). Las tallas de
-  // los buffers de texto las vigila TestBuffersDeTexto en test/test_tools.py.
+  // 24 instead of 12: in Japanese, "きろく %u" uses 10 bytes before the number, and the
+  // record previously lost its first digit ("きろく 2" when the score was 219). Buffer sizes
+  // are checked by TestBuffersDeTexto in test/test_tools.py.
   char rec[24];
   snprintf(rec, sizeof(rec), T(S_REC_FMT), pet.gameHi);
   setSize(2);
@@ -1564,7 +1564,7 @@ void renderGame() {
     }
   }
 
-  // anillo de impacto que se expande y desvanece (feedback suave del golpe)
+  // Expanding and fading impact ring (subtle hit feedback)
   uint32_t ht = millis() - hitTime;
   if (hitTime && ht < 260) {
     int rad = 22 + (int)(ht / 6);
@@ -1572,20 +1572,20 @@ void renderGame() {
     gfx->drawCircle((int)hitX, (int)hitY, rad - 2, C565(0xff, 0xd9, 0x8a));
   }
 
-  // la pokeball
+  // Poké Ball
   drawMap(SPR_ICON_PLAY, 16, (int)ballX - 24, (int)ballY - 24, 3, false);
 
   gfx->flush();
 }
 
-// ---------- ficha del bicho (deslizar vertical) ----------
+// ---------- Pet card (vertical swipe) ----------
 
-// x donde arrancan las barras de la ficha. Estaba fijo en 150, que daba de sobra
-// para etiquetas latinas de 3 caracteres pero no para las japonesas, mas anchas:
-// こうげき se metia dentro de la barra. Se calcula a partir de la etiqueta mas
-// larga para que las cuatro barras sigan alineadas en cualquier idioma, con el
-// valor original como suelo (asi en los idiomas latinos no cambia nada).
-// Requiere tener ya puesto el tamano de texto 2, porque textW() lo necesita.
+// X position where the card bars begin. It was fixed at 150, which was wide enough
+// for 3-character Latin labels but not the wider Japanese labels:
+// こうげき overlapped the bar. Calculate it from the widest label so all four bars
+// remain aligned in every language, with the original value as a lower bound
+// (so Latin layouts do not change).
+// Text size 2 must already be set because textW() depends on it.
 static int statBarX() {
   const StrId ids[] = { S_STAT_ATK, S_STAT_DEF, S_STAT_SPE, S_STAT_WGT, S_VIN };
   int ancho = 0;
@@ -1593,7 +1593,7 @@ static int statBarX() {
     int w = textW(T(id), 2);
     if (w > ancho) ancho = w;
   }
-  int x = 96 + ancho + 12;   // 12 px de aire entre etiqueta y barra
+  int x = 96 + ancho + 12;   // 12 px of spacing between the label and the bar
   return x < 150 ? 150 : x;
 }
 
@@ -1607,16 +1607,16 @@ void drawCardStat(int y, const char *label, uint16_t val, uint16_t maxBar, uint1
   setCur(330, y);
   printT(num);
   int bx = statBarX();
-  int bw = 310 - bx;   // la barra siempre acaba en 310, dejando aire hasta el numero
+  int bw = 310 - bx;   // The bar always ends at 310, leaving room before the number
   int fw = (int)val * bw / maxBar;
   if (fw > bw) fw = bw;
   gfx->fillRoundRect(bx, y + 2, bw, 11, 3, UI_TRACK);
   if (fw > 2) gfx->fillRoundRect(bx, y + 2, fw, 11, 3, color);
 }
 
-// ---------- ajuste de hora en pantalla (deslizar abajo) ----------
-// El usuario pone su hora LOCAL a ojo; el firmware la usa tal cual, asi que
-// no hay que gestionar zona horaria. Preserva el dia (no rompe racha/edad).
+// ---------- On-screen clock settings (swipe down) ----------
+// The user enters their LOCAL time manually; the firmware uses it as-is, so
+// no time-zone handling is needed. Preserve the day to keep the streak and age intact.
 
 void openClock() {
   uint32_t e = pet.lastSeenEpoch ? pet.lastSeenEpoch : rtcEpoch();
@@ -1642,7 +1642,7 @@ void drawClockBtn(int x, int y, const char *l) {
   printT(l);
 }
 
-// pildoras de idioma centradas en y; rellena la activa
+// Language pills centered on Y; fill the active one
 #define LANG_PILL_Y 296
 #define LANG_PILL_H 30
 #define LANG_PILL_X 336          // pildora de idioma (cicla LANG_COUNT al tocar)
@@ -1663,8 +1663,8 @@ void renderClock() {
   setCur(CX - 105, 108);
   printT(t);
 
-  drawClockBtn(104, 190, "-");  // hora -
-  drawClockBtn(170, 190, "+");  // hora +
+  drawClockBtn(104, 190, "-");  // Hour -
+  drawClockBtn(170, 190, "+");  // Hour +
   drawClockBtn(252, 190, "-");  // min -
   drawClockBtn(318, 190, "+");  // min +
   setSize(2);
@@ -1674,7 +1674,7 @@ void renderClock() {
   setCur(276, 256);
   printT(T(S_MIN));
 
-  // interruptor de sonido (izquierda de la fila de idioma)
+  // Sound toggle (left side of the language row)
   bool snd = audioEnabled();
   const char *sl = snd ? T(S_SND_ON) : T(S_SND_OFF);
   gfx->fillRoundRect(34, LANG_PILL_Y, 96, LANG_PILL_H, 8, snd ? UI_BAR_OK : UI_WHITE);
@@ -1684,7 +1684,7 @@ void renderClock() {
   setCur(34 + (96 - textW(sl, 2)) / 2, LANG_PILL_Y + 8);
   printT(sl);
 
-  // selector de idioma: una pildora que cicla los 6 idiomas al tocar
+  // Language selector: a pill that cycles through the six languages when tapped
   gfx->fillRoundRect(LANG_PILL_X, LANG_PILL_Y, LANG_PILL_W, LANG_PILL_H, 8, UI_WHITE);
   gfx->drawRoundRect(LANG_PILL_X, LANG_PILL_Y, LANG_PILL_W, LANG_PILL_H, 8, UI_INK);
   char lp[10];
@@ -1705,7 +1705,7 @@ void renderClock() {
   setCur(centerX(T(S_CLOCK_CANCEL), 2), 410);
   printT(T(S_CLOCK_CANCEL));
 
-  // version del firmware (discreta, abajo del todo)
+  // Firmware version (subtle, at the very bottom)
   char ver[20];
   snprintf(ver, sizeof(ver), "TamaPoke v%s", FW_VERSION);
   setSize(1);
@@ -1730,7 +1730,7 @@ void clockTap(int16_t x, int16_t y) {
     }
     if (x >= LANG_PILL_X && x < LANG_PILL_X + LANG_PILL_W) {  // cicla idioma
       setLang((Lang)((gLang + 1) % LANG_COUNT));
-      applyLangFont();  // la fuente cambia con el idioma
+      applyLangFont();  // The font changes with the language
       sfxPlay(SFX_TAP);
       return;
     }
@@ -1738,7 +1738,7 @@ void clockTap(int16_t x, int16_t y) {
   if (y >= 340 && y <= 388 && x >= 133 && x <= 333) { applyClock(); return; }
 }
 
-// llama + numero de racha arriba a la izquierda
+// Llama + streak count at the top left
 void drawStreakBadge() {
   if (pet.streak < 1) return;
   int x = 26, y = 16;
@@ -1755,8 +1755,8 @@ void drawStreakBadge() {
 // banner temporal: medalla nueva o hito de racha
 void drawCelebration() {
   const char *l1 = nullptr, *l2 = nullptr;
-  // 32 y no 20: "%u にちれんぞく！" ya pasa de 20 con una sola cifra, y snprintf
-  // cortaba a mitad de un caracter de 3 bytes.
+  // 32 instead of 20: "%u にちれんぞく！" already exceeds 20 bytes with a single digit, and snprintf
+  // was cutting through a 3-byte character.
   char buf[32];
   if (pet.showMedal()) {
     for (int i = 0; i < MED_COUNT; i++)
@@ -1779,7 +1779,7 @@ void drawCelebration() {
   printT(l2);
 }
 
-// medallas en la ficha: badge con etiqueta, color si conseguida
+// Medals on the card: badge with label, colored when earned
 void drawMedalBadge(int x, int y, int i) {
   bool got = pet.hasMedal(1 << i);
   gfx->fillRoundRect(x, y, 100, 24, 6, got ? UI_BAR_OK : UI_TRACK);
@@ -1797,18 +1797,18 @@ void renderCardProfile() {
   char head[32];
   snprintf(head, sizeof(head), T(S_NAME_FMT), pet.shiny ? "*" : "", nm, pet.level());
   gfx->setTextColor(d.accent);
-  // auto-encoge: a tamano 3 los nombres largos no caben en la franja estrecha de
-  // arriba de la pantalla redonda, asi que se cortaban por el borde. El ancho se
-  // MIDE con textW(): strlen() cuenta bytes, y en una fila UTF-8 no hay un byte
-  // por caracter ni todos miden lo mismo. Con la fuente clasica textW() devuelve
-  // strlen()*6*size, o sea exactamente la cuenta anterior: no mueve un pixel en
-  // los seis idiomas latinos (11 caracteres a tamano 3 son esos 198 px).
+  // Auto-shrink: at size 3, long names do not fit in the narrow strip
+  // at the top of the round screen and were clipped. Measure the width
+  // with textW(): strlen() counts bytes, and UTF-8 does not use one byte
+  // per character or a fixed width. For the classic font, textW() returns
+  // strlen()*6*size, exactly matching the previous calculation; nothing moves in
+  // the six Latin-script languages (11 characters at size 3 use 198 px).
   setSize(3);
   int hts = (textW(head, 3) <= 198) ? 3 : 2;
   setSize(hts);
   setCur(centerX(head, hts), hts == 3 ? 34 : 40);
   printT(head);
-  if (pet.nick[0]) {  // especie real bajo el apodo
+  if (pet.nick[0]) {  // Actual species name shown below the nickname
     const char *sp = dexName(pet.speciesId);
     char par[32];
     snprintf(par, sizeof(par), "(%s)", sp);
@@ -1821,11 +1821,11 @@ void renderCardProfile() {
   // retrato grande animado
   if (pmd.loaded) drawPmdAct(PMD_IDLE, CX, 206, millis(), true, false, 4);
 
-  // racha con llama
+  // Streak with a llama icon
   int sx = 138, sy = 224;
   gfx->fillTriangle(sx + 8, sy, sx + 1, sy + 18, sx + 15, sy + 18, UI_BAR_BAD);
   gfx->fillTriangle(sx + 8, sy + 7, sx + 4, sy + 18, sx + 12, sy + 18, UI_BAR_WARN);
-  char rl[40];  // en japones pierde cifras con 30 a partir de 100 dias
+  char rl[40];  // In Japanese, the 30-day label lost digits from 100 days onward
   snprintf(rl, sizeof(rl), T(S_STREAK_FMT), pet.streak, pet.bestStreak);
   gfx->setTextColor(UI_INK);
   setSize(2);
@@ -1871,7 +1871,7 @@ void renderCardStats() {
   printT(T(S_TRAIN_STR));
 }
 
-// pagina 2: medallas con etiqueta descriptiva
+// Page 2: medals with descriptive labels
 void renderCardMedals() {
   int got = 0;
   for (int i = 0; i < MED_COUNT; i++)
