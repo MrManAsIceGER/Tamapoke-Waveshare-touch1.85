@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Baja de PokeAPI los nombres oficiales por idioma y escribe tools/dex_names.py.
+"""Fetch official localized names from PokeAPI and write tools/dex_names.py.
 
   python3 tools/gen_names.py
 
-Solo FR y DE tienen nombres propios en gen 1; ES/IT/PT usan los ingleses, asi
-que aqui se guarda unicamente lo que difiere del ingles. La fuente GFX es
-ASCII, asi que los nombres salen en mayusculas y sin acentos.
+Only FR and DE have distinct Gen 1 names; ES/IT/PT use the English names,
+so this file stores only entries that differ from English. The GFX font is
+ASCII, so Latin-script names are written in uppercase without accents.
 """
 import json
 import os
