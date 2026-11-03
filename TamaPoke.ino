@@ -1,7 +1,7 @@
 // TamaPoke - Gen 1-inspired pixel-art Tamagotchi
 // for the Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0
 //
-// Librerias (Library Manager o repo de Waveshare):
+// Libraries (Arduino Library Manager or the Waveshare repository):
 //   - "GFX Library for Arduino" (moononournation)
 //   - "SensorLib" (Lewis He), driver tactil CST816
 //
