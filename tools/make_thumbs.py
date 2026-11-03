@@ -31,7 +31,7 @@ def read_pmd_idle_frame0(path):
     p = 7 + palcount * 2
     for _ in range(nacts):
         aid, w, h, nf = buf[p], buf[p + 1], buf[p + 2], buf[p + 3]
-        p += 4 + nf * 2  # cabecera + ms[]
+        p += 4 + nf * 2  # header + ms[]
         if aid == 0:     # PMD_IDLE
             return w, h, pal, buf[p:p + w * h]  # frame 0
         p += w * h * nf
@@ -39,7 +39,7 @@ def read_pmd_idle_frame0(path):
 
 
 def shrink(w, h, pal, data):
-    # escala a CELL x CELL con vecino mas cercano, conservando aspecto
+    # Scale to CELL x CELL with nearest-neighbor sampling while preserving aspect ratio
     scale = min(CELL / w, CELL / h, 1.0)
     nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
     out = bytearray()
