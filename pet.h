@@ -2,11 +2,11 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
-// 1 tick = 1 minuto de juego. Baja este valor para probar mas rapido
-// (p. ej. 5000UL = las estadisticas caen 12x mas rapido).
+// 1 tick = 1 minute of game time. Lower this value to speed up testing
+// (e.g. 5000UL makes stats decrease 12 times faster).
 #define PET_TICK_MS 60000UL
-// Minutos de juego por nivel. Con 60, CHARMANDER evoluciona a las ~16 h
-// de juego con cuidado perfecto. Baja a 1 para ver evoluciones al momento.
+// Game minutes per level. At 60, CHARMANDER evolves after about 16 hours
+// of perfect care. Lower to 1 to see evolutions immediately.
 #define MINUTES_PER_LEVEL 60
 #define EAT_ANIM_MS 2500UL
 #define HEART_MS 1500UL
@@ -15,34 +15,34 @@
 #define FAREWELL_AGE_MIN (3UL * 24 * 60)
 #define RUNAWAY_TICKS 60
 
-// Limita una estadistica al rango valido 0..100.
-// Es inline para que el helper tambien sea seguro en otros archivos.
+// Clamp a stat to the valid range 0..100.
+// Inline so this helper is also safe to use from other files.
 static inline uint8_t clamp100(int value) {
   if (value < 0) return 0;
   if (value > 100) return 100;
   return (uint8_t)value;
 }
 
-// milisegundos que faltan hasta `deadline` (0 si ya paso, o si deadline==0:
-// "temporizador inactivo"). Todos los temporizadores del juego (dialogos,
-// animaciones) se guardan como un instante absoluto "deadline = millis() +
-// duracion" y se comparaban con millis() < deadline / millis() > deadline;
-// eso se rompe cuando millis() da la vuelta a los ~49,7 dias de uptime. La
-// resta sin signo, reinterpretada como con signo, es segura frente a esa
-// vuelta mientras el intervalo real sea muy inferior a ~24,8 dias (aqui el
-// temporizador mas largo son ~12 s), sin cambiar como se guarda el deadline.
+// Milliseconds remaining until `deadline` (0 if expired or if deadline==0:
+// 'timer inactive'). All game timers (dialogs, animations) are stored as an
+// absolute timestamp: `deadline = millis() + duration`. Comparing against
+// millis() < deadline / millis() > deadline breaks when millis() wraps.
+// That happens after about 49.7 days of uptime. Unsigned subtraction,
+// reinterpreted as signed, is safe across the wrap as long as the actual
+// interval is much shorter than about 24.8 days (the longest timer here
+// is about 12 seconds). This does not change how deadlines are stored.
 static inline uint32_t timeLeft(uint32_t deadline) {
   if (!deadline) return 0;
   int32_t left = (int32_t)(deadline - millis());
   return left > 0 ? (uint32_t)left : 0;
 }
 
-// ceremonias de fin de ciclo
+// End-of-life ceremonies
 enum : uint8_t { CER_NONE = 0, CER_FAREWELL, CER_RUNAWAY, CER_RELEASE };
 
 enum PetMood : uint8_t { MOOD_HAPPY, MOOD_SAD, MOOD_EATING, MOOD_SLEEPING };
 
-// medallas del individuo (bitmask)
+// Individual medals (bitmask)
 enum : uint16_t {
   MED_LV10 = 1 << 0, MED_LV25 = 1 << 1, MED_LV50 = 1 << 2,
   MED_BERRY = 1 << 3, MED_STREAK7 = 1 << 4, MED_BOND = 1 << 5,
@@ -52,7 +52,7 @@ enum : uint16_t {
 
 class Pet {
 public:
-  // Estadisticas 0..100
+  // Stats: 0..100
   uint8_t fullness = 80;
   uint8_t joy = 80;
   uint8_t energy = 80;
@@ -60,7 +60,7 @@ public:
   uint8_t poops = 0;
   uint8_t weight = 0;
 
-  // genes (90-110%, se tiran al eclosionar) y entrenamiento (0-100)
+  // Genes (90-110%, rolled at hatching) and training (0-100)
   uint8_t geneAtk = 100, geneDef = 100, geneSpe = 100;
   uint8_t trAtk = 0, trDef = 0, trSpe = 0;
   bool berryKnown = false;
@@ -76,15 +76,15 @@ public:
   uint8_t dexReg[19] = { 0 };
   uint8_t dexShinyReg[19] = { 0 };
 
-  // racha de cuidado diario (del jugador: persiste entre crianzas)
+  // Daily care streak (player-wide; persists between pets)
   uint16_t streak = 0, bestStreak = 0;
   uint32_t lastCareDay = 0;
 
-  // vinculo (del bicho: sube lento con cuidado, se resetea al nacer otro)
+  // Bond (belongs to the pet; grows with care and resets when a new pet hatches)
   uint8_t bond = 0;
   char nick[12] = "";
 
-  // medallas: del individuo + contador acumulado entre todas las crianzas
+  // Medals: individual medals plus the lifetime total across all pets
   uint16_t medals = 0, totalMedals = 0;
   uint16_t newMedal = 0;
   uint16_t lastMilestone = 0;
@@ -94,7 +94,7 @@ public:
   void begin();
   void update(uint32_t nowMs);
 
-  // Acciones (botones tactiles)
+  // Touch-button actions
   void feed();
   void feedBerry(uint8_t color);
   void feedCandy();
@@ -106,7 +106,7 @@ public:
   void playResult(uint16_t score);
   uint8_t trainStrength(uint16_t hits);
 
-  // stats de combate: base real de gen 1 x genes + nivel + entrenamiento
+  // Combat stats: Gen 1 base values x genes + level + training
   uint16_t atkStat() const;
   uint16_t defStat() const;
   uint16_t speStat() const;
@@ -138,7 +138,7 @@ public:
   bool canFarewellNow() const;
   bool canRunawayNow() const;
 
-  // el usuario decide en un dialogo; "mantener/quedaros" pospone y re-ofrece luego
+  // The user decides in a dialog; 'keep/stay' postpones the choice and offers it again later
   bool wantEvolveButton() const {
     return canEvolveNow() && level() > evoDeclinedLv;
   }
@@ -150,7 +150,7 @@ public:
   void declineEvolve() { evoDeclinedLv = level(); }
   void declineFarewell() { farDeclinedAge = ageMinutes + 1440; }
 
-  // primera partida: el jugador elige inicial (Bulbasaur/Charmander/Squirtle)
+  // First run: the player chooses a starter (Bulbasaur/Charmander/Squirtle)
   bool awaitingStarter() const { return starterPick; }
   void chooseStarter(int16_t dex) {
     eggTarget = dex;
@@ -164,7 +164,7 @@ public:
     neglectTicks = RUNAWAY_TICKS;
   }
 
-  // uint16_t: el nivel se topa en 999 para evitar desbordamientos.
+  // uint16_t: level is capped at 999 to prevent overflow.
   uint16_t level() const {
     uint32_t lv = 1 + ageMinutes / MINUTES_PER_LEVEL;
     return lv > 999 ? 999 : (uint16_t)lv;
@@ -196,21 +196,21 @@ public:
     return 1.0f - (float)timeLeft(ceremonyUntil) / (float)CEREMONY_MS;
   }
 
-  // racha / vinculo / medallas / nombre
+  // Streak / bond / medals / name
   void rename(const char *name);
   bool hasMedal(uint16_t m) const { return medals & m; }
   bool showMedal() const { return timeLeft(medalUntil) > 0; }
   bool showMilestone() const { return timeLeft(milestoneUntil) > 0; }
   int careBonus() const;
 
-  // guardado periodico diferido
+  // Deferred periodic save
   bool savePending() const { return pendingSave; }
   uint32_t savedEpoch() { return prefs.getUInt("seen", 0); }
   void flushSave();
 
 private:
-  // Metodos internos implementados en pet.cpp. Estas declaraciones faltaban
-  // en el encabezado anterior y causaban los errores de miembro no declarado.
+  // Internal methods implemented in pet.cpp. These declarations were missing
+  // from the previous header and caused undeclared-member errors.
   void tick();
   void save();
   void load();
