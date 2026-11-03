@@ -26,17 +26,18 @@
 #include "audio.h"
 #include "blit.h"
 #include "power.h"
+#include "tca9554.h"
+#include "Display_ST77916.h"
+#include "TamaPoke_ST77916_Output.h"
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
 #define FW_VERSION "1.18"
 
-Arduino_DataBus *bus = new Arduino_ESP32QSPI(
-  LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
-Arduino_CO5300 *panel = new Arduino_CO5300(
-  bus, LCD_RESET, 0 /*rotation*/, LCD_WIDTH, LCD_HEIGHT, 6, 0, 0, 0);
-// Framebuffer completo en PSRAM: dibujamos todo y hacemos flush() (sin parpadeo)
-Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, panel);
+TamaPoke_ST77916_Output displayOutput;
+
+Arduino_Canvas *gfx =
+  new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, &displayOutput);
 
 TouchDrvCST92xx touch;
 // fuente CJK activa: de momento siempre false, la carga llegara con el
@@ -186,6 +187,20 @@ void setup() {
   // handleTouch).
   Wire.setTimeOut(50);
 
+    // TCA9554 zuerst initialisieren: EXIO2 steuert den LCD-Reset.
+    if (!tca9554Begin(Wire)) {
+      Serial.println("FEHLER: TCA9554 konnte nicht initialisiert werden");
+      return;
+    }
+    // Backlight GPIO5 und danach den Waveshare-ST77916-Treiber initialisieren.
+    Backlight_Init();
+    if (!gfx->begin(80000000)) {
+      Serial.println("FEHLER: ST77916 / QSPI Initialisierung fehlgeschlagen");
+      return;
+    }
+    // Originalwert 180/255 auf den Waveshare-Helligkeitsbereich 0..100 abbilden.
+    Set_Backlight(71);
+
   // CRITICO: encender la alimentacion del panel (BLDO1=OLED VDD 3.3V) ANTES de
   // inicializar el display. Si el PMU se reseteo (drenaje total), este rail
   // queda OFF y la pantalla se ve negra aunque el resto de la placa funcione.
@@ -305,7 +320,7 @@ void loop() {
   // celda baje mas; el RTC conserva la hora
   if (batShouldShutdown() && !usbPresent()) {
     pet.flushSave();
-    panel->setBrightness(0);
+    Set_Backlight(0);
     batPowerOff();
   }
 
@@ -396,7 +411,7 @@ void updateBrightness(uint32_t now) {
   static uint8_t current = 255;
   if (target != current) {
     current = target;
-    panel->setBrightness(target);
+    Set_Backlight((uint8_t)(((uint16_t)target * 100U + 127U) / 255U));
   }
 }
 
