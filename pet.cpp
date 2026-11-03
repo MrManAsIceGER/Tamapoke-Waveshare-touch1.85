@@ -42,7 +42,7 @@ void Pet::newEgg() {
 // progresion offline: el tiempo paso aunque estuviera apagado, pero con
 // piedad — las barras bajan con suelo en 15 (vuelve hambriento, no muerto),
 // sin descuidos ni escapadas en ausencia
-static uint8_t dropTo(uint8_t v, uint8_t d, uint8_t fl) {
+static uint8_t dropTo(uint8_t v, uint16_t d, uint8_t fl) {
   if (v <= fl) return v;
   return (v - fl > d) ? v - d : fl;
 }
@@ -482,10 +482,10 @@ void Pet::feedCandy() {
   save();
 }
 
-void Pet::playResult(uint8_t score) {
+void Pet::playResult(uint16_t score) {
   if (ceremony != CER_NONE || isEgg()) return;
-  uint8_t v = trSpe + score / 5;  // jugar entrena la velocidad
-  trSpe = v > 100 ? 100 : v;
+  uint16_t v = (uint16_t)trSpe + score / 5;  // jugar entrena la velocidad
+  trSpe = v > 100 ? 100 : (uint8_t)v;
   joy = clamp100(joy + 5 + (score > 15 ? 30 : score * 2));
   energy = dropTo(energy, 10 + score / 2, 5);
   fullness = dropTo(fullness, 5, 5);
