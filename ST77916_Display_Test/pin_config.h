@@ -19,7 +19,7 @@
  * 16 MB Flash
  * 8 MB PSRAM
  *
- * LCD-Reset und Touch-Reset werden über den TCA9554 gesteuert.
+ * LCD reset and touch reset are controlled through the TCA9554.
  */
 
 
