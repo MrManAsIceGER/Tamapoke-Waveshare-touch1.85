@@ -154,7 +154,6 @@ static uint32_t pwrPressedAtMs = 0;
 
 static constexpr uint32_t PWR_DEBOUNCE_MS = 35;
 static constexpr uint32_t PWR_SHORT_MIN_MS = 60;
-static constexpr uint32_t PWR_SHORT_MAX_MS = 1500;
 static constexpr uint32_t PWR_LONG_MS = 4000;
 
 void pwrSetup() {
@@ -206,8 +205,8 @@ static void pwrUpdateButton() {
         pwrIgnoreNextRelease = false;
       } else if (duration >= PWR_LONG_MS) {
         if (!pwrLongReported) pwrLongPending = true;
-      } else if (duration >= PWR_SHORT_MIN_MS &&
-                 duration <= PWR_SHORT_MAX_MS) {
+            } else if (duration >= PWR_SHORT_MIN_MS &&
+                 duration < PWR_LONG_MS) {
         pwrShortPending = true;
       }
     }
