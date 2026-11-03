@@ -4,24 +4,24 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-// Initialisiert den TCA9554 auf dem bereits gestarteten I2C-Bus.
-// EXIO1 und EXIO2 werden als Ausgänge konfiguriert und auf HIGH gesetzt.
+// Initialize the TCA9554 on an I2C bus that has already been started.
+// Configure EXIO1 and EXIO2 as outputs and set them HIGH.
 bool tca9554Begin(TwoWire &wire = Wire);
 
-// Setzt einen EXIO-Ausgang (Nummerierung 1 bis 8).
-// HIGH = 3,3 V, LOW = 0 V.
+// Set an EXIO output (numbered 1 through 8).
+// HIGH = 3.3 V, LOW = 0 V.
 bool tca9554SetPin(uint8_t exio, bool level);
 
-// Liest den Zustand eines EXIO-Pins (Nummerierung 1 bis 8).
+// Read the state of an EXIO pin (numbered 1 through 8).
 bool tca9554ReadPin(uint8_t exio, bool &level);
 
-// Führt einen Reset-Impuls aus:
-// LOW für lowMs, anschließend HIGH und settleMs warten.
+// Generate a reset pulse:
+// hold LOW for lowMs, then set HIGH and wait settleMs.
 bool tca9554PulseReset(
     uint8_t exio,
     uint16_t lowMs = 10,
     uint16_t settleMs = 50
 );
 
-// Gibt zurück, ob die Initialisierung erfolgreich war.
+// Returns whether initialization succeeded.
 bool tca9554Ready();
