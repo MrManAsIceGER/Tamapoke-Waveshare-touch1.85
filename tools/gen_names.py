@@ -14,17 +14,17 @@ import time
 import unicodedata
 
 LANGS = ('fr', 'de')
-LANGS_UTF8 = ('ja-hrkt', 'ko')  # CJK: van tal cual en UTF-8, no en octal ASCII
+LANGS_UTF8 = ('ja-hrkt', 'ko')  # CJK: keep UTF-8 as-is; do not convert it to ASCII octal escapes
 
-# Convencion de genero por idioma: ni la tabla CP437 ni ningun subconjunto
-# unifont de U8g2 traen ♀/♂, asi que cada idioma elige con que los sustituye.
-# El camino latino usa F/M desde siempre. El coreano usa 암/수
-# ("hembra"/"macho"), que se leen como palabra y no como una letra suelta, y
-# van SEPARADOS POR UN ESPACIO: 니드런 암. El espacio va dentro del reemplazo
-# porque lo que se sustituye es solo el simbolo. Las dos silabas estan en
-# KS X 1001, y ya aparecen en la tabla (암나이트, 암스타, 홍수몬). El nombre son
-# cuatro silabas mas un espacio, frente a entradas de cinco como 깨비드릴조, asi
-# que no es el mas ancho de la tabla.
+# Gender-label convention by language: neither the CP437 table nor any U8g2
+# Unifont subset includes ♀/♂, so each language chooses how to represent them.
+# The Latin path has always used F/M. Korean uses 암/수
+# ('female'/'male'), read as words rather than single letters, and
+# they are SEPARATED BY A SPACE: 니드런 암. The space belongs in the replacement
+# because only the symbol itself is replaced. Both syllables are in
+# KS X 1001 and already appear in the table (암나이트, 암스타, 홍수몬). The name has
+# four syllables plus a space, compared with five-syllable entries such as 깨비드릴조,
+# so it is not the widest entry in the table.
 GENERO = {'ko': (' 암', ' 수')}
 GENERO_DEF = ('F', 'M')
 
@@ -74,8 +74,8 @@ def main():
         for lg in LANGS_UTF8:
             v = names.get(lg)
             if v:
-                # 'ja-hrkt' -> 'ja'; el UTF-8 se respeta salvo ♀/♂, que la
-                # fuente no tiene (ver sin_genero)
+                # 'ja-hrkt' -> 'ja'; preserve UTF-8 except for ♀/♂, which the
+                # font does not contain (see no_gender)
                 corto = lg.split('-')[0]
                 dif[corto] = sin_genero(v, corto)
         if dif:
