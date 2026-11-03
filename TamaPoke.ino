@@ -1,9 +1,9 @@
 // TamaPoke - tamagotchi pixel art inspirado en la gen 1
-// para Waveshare ESP32-S3-Touch-AMOLED-1.75
+// para Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0
 //
 // Librerias (Library Manager o repo de Waveshare):
-//   - "GFX Library for Arduino" (moononournation), con soporte CO5300 QSPI
-//   - "SensorLib" (Lewis He), driver tactil CST9217
+//   - "GFX Library for Arduino" (moononournation)
+//   - "SensorLib" (Lewis He), driver tactil CST816
 //
 // Placa: ESP32S3 Dev Module | Flash 16MB | PSRAM: OPI PSRAM | USB CDC On Boot: Enabled
 //
@@ -12,7 +12,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "Arduino_GFX_Library.h"
-#include "TouchDrvCSTXXX.hpp"
+#include "TouchDrvCST.hpp"
 #include <U8g2lib.h>  // fuentes CJK (japones); ver applyLangFont()
 #include <esp_sleep.h>
 #include <driver/gpio.h>
@@ -34,16 +34,21 @@
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
 #define FW_VERSION "1.18"
 
+// La logica original de TamaPoke esta disenada para un lienzo de 466 x 466.
+// El adaptador reduce ese framebuffer a los 360 x 360 fisicos del ST77916.
+static constexpr int16_t GAME_WIDTH = 466;
+static constexpr int16_t GAME_HEIGHT = 466;
+
 TamaPoke_ST77916_Output displayOutput;
-
 Arduino_Canvas *gfx =
-  new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, &displayOutput);
+  new Arduino_Canvas(GAME_WIDTH, GAME_HEIGHT, &displayOutput);
 
-TouchDrvCST92xx touch;
+// La Rev 2.0 usa CST816 en un bus I2C separado (GPIO1/GPIO3).
+TwoWire TouchWire(1);
+TouchDrvCST816 touch;
 // fuente CJK activa: de momento siempre false, la carga llegara con el
 // soporte de japones/coreano/chino (ver PR #13)
 bool gCjkFont = false;
-#define TOUCH_ADDR 0x5A  // CST9217
 Pet pet;
 
 // sprite animado de la SD para la especie actual (si existe el archivo)
@@ -179,51 +184,62 @@ void setup() {
   // y nadie lo vacia) -> con timeout 0 los mensajes se descartan
   Serial.printf("TamaPoke fw v%s\n", FW_VERSION);
   loadLang();  // idioma guardado (ES por defecto)
+  // Bus I2C principal: RTC y sensores (GPIO11/GPIO10).
   Wire.begin(IIC_SDA, IIC_SCL);
-  // CST9217 (tactil), AXP2101 (PMU) y PCF85063 (RTC) comparten este bus I2C.
-  // Red de seguridad para PMU/RTC (SensorLib NO respeta este timeout en el
-  // tactil; el cuelgue del tactil dormido se resuelve gateando por INT, ver
-  // handleTouch).
   Wire.setTimeOut(50);
 
-    // TCA9554 zuerst initialisieren: EXIO2 steuert den LCD-Reset.
-    if (!tca9554Begin(Wire)) {
-      Serial.println("FEHLER: TCA9554 konnte nicht initialisiert werden");
-      return;
-    }
-    // Backlight GPIO5 und danach den Waveshare-ST77916-Treiber initialisieren.
-    Backlight_Init();
-    if (!gfx->begin(80000000)) {
-      Serial.println("FEHLER: ST77916 / QSPI Initialisierung fehlgeschlagen");
-      return;
-    }
-    // Originalwert 180/255 auf den Waveshare-Helligkeitsbereich 0..100 abbilden.
-    Set_Backlight(71);
+  // TCA9554: EXIO1 = Touch-Reset, EXIO2 = LCD-Reset.
+  if (!tca9554Begin(Wire)) {
+    Serial.println("FEHLER: TCA9554 konnte nicht initialisiert werden");
+    return;
+  }
 
-  // CRITICO: encender la alimentacion del panel (BLDO1=OLED VDD 3.3V) ANTES de
-  // inicializar el display. Si el PMU se reseteo (drenaje total), este rail
-  // queda OFF y la pantalla se ve negra aunque el resto de la placa funcione.
-  pmuEnablePanel();
+  // Touch-Controller vor dem ersten I2C-Zugriff per TCA9554 zuruecksetzen.
+  if (!tca9554PulseReset(EXIO_TP_RESET, 10, 60)) {
+    Serial.println("WARNUNG: CST816 Reset ueber EXIO1 fehlgeschlagen");
+  }
 
-  // QSPI a 80MHz (por defecto 40): el flush del framebuffer es el cuello de
-  // botella del fps (~56ms a 40MHz). Si el panel mostrara basura, bajar a 40M.
-  if (!gfx->begin(80000000)) Serial.println("gfx->begin() fallo");
+  // Separater Touch-I2C-Bus: SDA=GPIO1, SCL=GPIO3, Adresse 0x15.
+  bool touchBusOk = TouchWire.begin(TP_IIC_SDA, TP_IIC_SCL, 400000);
+  if (touchBusOk) {
+    TouchWire.setTimeOut(50);
+  } else {
+    Serial.println("FEHLER: Touch-I2C auf GPIO1/GPIO3 konnte nicht gestartet werden");
+  }
+
+  // ST77916 QSPI initialisieren. Der Canvas bleibt im originalen 466x466-Raum;
+  // TamaPoke_ST77916_Output skaliert ihn beim Flush auf 360x360.
+  Backlight_Init();
+  if (!gfx->begin(80000000)) {
+    Serial.println("FEHLER: ST77916 / QSPI oder 466x466-Framebuffer-Initialisierung fehlgeschlagen");
+    return;
+  }
   Set_Backlight(71);
-  applyLangFont();  // fuente del idioma guardado (clasica salvo CJK)
+  applyLangFont();
 
+  // CST816: Reset erfolgt hardwareseitig ueber TCA9554 EXIO1.
   touch.setPins(TP_RESET, TP_INT);
   bool touchOk = false;
-  for (int i = 0; i < 3 && !touchOk; i++) {  // a veces falla al primer intento
-    touchOk = touch.begin(Wire, 0x5A, IIC_SDA, IIC_SCL);
-    if (!touchOk) delay(150);
+  if (touchBusOk) {
+    for (int i = 0; i < 3 && !touchOk; i++) {
+      touchOk = touch.begin(TouchWire, CST816_ADDR, TP_IIC_SDA, TP_IIC_SCL);
+      if (!touchOk) delay(150);
+    }
   }
-  if (!touchOk) Serial.println("CST9217 no detectado");
-  // begin() deja el chip en modo comando (lee la identidad y no sale);
-  // hace falta un reset por hardware para que vuelva a reportar toques
-  touch.reset();
-  touch.setMaxCoordinates(LCD_WIDTH, LCD_HEIGHT);
-  touch.setMirrorXY(true, true);  // el panel esta montado girado 180 grados
-  // INT activo-bajo: salta cuando hay datos. Gatea las lecturas I2C (ver loop)
+
+  if (!touchOk) {
+    Serial.println("CST816 nicht erkannt (I2C 0x15, SDA=1, SCL=3)");
+  } else {
+    // Rohdaten des CST816 werden auf den logischen Spielraum 466x466 skaliert.
+    touch.setResolution(LCD_WIDTH, LCD_HEIGHT);
+    touch.setTargetResolution(GAME_WIDTH, GAME_HEIGHT);
+    // Die Touch-Einheit ist wie die Anzeige um 180 Grad gedreht montiert.
+    touch.setMirrorXY(true, true);
+    Serial.printf("Touch bereit: %s, Adresse 0x%02X\n",
+                  touch.getModelName(), CST816_ADDR);
+  }
+
+  // INT aktiv-low: nur bei einem Touchereignis den I2C-Bus abfragen.
   pinMode(TP_INT, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(TP_INT), touchIsr, FALLING);
 
@@ -562,25 +578,13 @@ void handleTouch() {
   static uint32_t lastPoll = 0;
   if (millis() - lastPoll < 20) return;  // 50 Hz le sobra a un dedo
   lastPoll = millis();
-  // solo tocamos el bus si el chip aviso por INT o si el dedo sigue abajo (hay
-  // que detectar el levantamiento). Leer el CST9217 dormido se colgaba ~1s y
-  // congelaba el loop entero; SensorLib no respeta el timeout de Wire.
+  // Solo consultamos el bus dedicado del CST816 si INT aviso o el dedo sigue
+  // abajo (para detectar el levantamiento).
   if (!gTouchIrq && !wasPressed) return;
   gTouchIrq = false;
-  // Un ciclo de solo direccion antes de leer. Sin esto, getPoint() se colgaba
-  // exactamente 1000 ms (el timeout por defecto del driver I2C, que SensorLib no
-  // acota) y congelaba el loop entero: es lo que se percibia como "el minijuego
-  // se congela 2-3 segundos al tocar la bola" (issue #16), porque ahi los toques
-  // son rapidos y seguidos.
-  //
-  // Medido en placa, jugando lo mismo (~470 lecturas, marcador ~50):
-  //   sin esta linea: 5 parones de 1000 ms en 60 s
-  //   con ella:       0
-  // El contador de rechazos salio 0 en ambos casos, asi que NO funciona
-  // saltandose lecturas cuando el chip no contesta: lo que hace es despertarlo,
-  // para que la lectura siguiente no se encuentre el CST9217 dormido.
-  Wire.beginTransmission(TOUCH_ADDR);
-  if (Wire.endTransmission() != 0) return;  // no responde: se reintenta en 20 ms
+  // Direccion I2C previa de comprobacion en el bus independiente del Touch.
+  TouchWire.beginTransmission(CST816_ADDR);
+  if (TouchWire.endTransmission() != 0) return;  // CST816 no responde; reintento en 20 ms
   int16_t x, y;
   bool pressed = touch.getPoint(&x, &y, 1) > 0;
 
