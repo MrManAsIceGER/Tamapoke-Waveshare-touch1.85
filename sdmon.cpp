@@ -181,12 +181,12 @@ const uint8_t *SdThumbs::get(int16_t dex) const {
 
 bool sdBegin() {
   // Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0:
-  // SDMMC 1-Bit: CLK=GPIO14, CMD=GPIO17, D0=GPIO16.
-  // D1/D2 sind nicht angeschlossen; D3/EXIO3 wird im 1-Bit-Modus
-  // nicht als SPI-Chip-Select verwendet.
+  // SDMMC 1-bit: CLK=GPIO14, CMD=GPIO17, D0=GPIO16.
+  // D1/D2 are not connected; D3/EXIO3 is
+  // not used as an SPI chip select in 1-bit mode.
   SD_MMC.setPins(SD_SCLK, SD_MOSI, SD_MISO);
 
-  // Kein automatisches Formatieren bei Mount-Fehlern.
+  // Do not automatically format the card when mounting fails.
   sdReady = SD_MMC.begin("/sdcard", true, false);
 
   if (sdReady) {
@@ -286,10 +286,10 @@ void SdMon::unload() {
 }
 
 // ---------------------------------------------------------------------------
-// Protocolo de carga por USB:
-//   PUT <ruta> <bytes>\n + datos crudos -> "OK" ... "DONE"
-//   LS\n                                -> listado de /mons
-// Usar con tools/send_sd.py
+// USB upload protocol:
+// PUT <path> <bytes>\n + raw data -> "OK" ... "DONE"
+// LS\n                                -> list /mons
+// Use with tools/send_sd.py
 // ---------------------------------------------------------------------------
 
 bool sdSerialCommand(const String &line) {
