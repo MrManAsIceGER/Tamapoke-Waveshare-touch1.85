@@ -9,7 +9,7 @@
 // --------------------------------------------------
 // Display: Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0
 // Controller: ST77916
-// Aufloesung: 360 x 360
+// Resolution: 360 x 360
 // Schnittstelle: QSPI
 // --------------------------------------------------
 
@@ -25,14 +25,14 @@ Arduino_DataBus *bus = new Arduino_ESP32QSPI(
 
 Arduino_GFX *gfx = new Arduino_ST77916(
     bus,
-    -1,       // Reset erfolgt ueber TCA9554 EXIO2
+    -1,       // Reset is controlled through TCA9554 EXIO2
     0,        // Rotation
     true,     // IPS
-    360,      // Breite
-    360       // Hoehe
+    360,      // Width
+    360       // Height
 );
 
-// RGB565-Farben
+// RGB565 colors
 #define COLOR_BLACK   0x0000
 #define COLOR_WHITE   0xFFFF
 #define COLOR_RED     0xF800
@@ -76,20 +76,20 @@ void showGraphicsTest()
 
     gfx->fillScreen(COLOR_BLACK);
 
-    // Rahmen
+    // Border
     gfx->drawRect(0, 0, 360, 360, COLOR_WHITE);
     gfx->drawRect(5, 5, 350, 350, COLOR_CYAN);
 
-    // Farbige Balken
+    // Colored bars
     gfx->fillRect(20, 25, 320, 35, COLOR_RED);
     gfx->fillRect(20, 65, 320, 35, COLOR_GREEN);
     gfx->fillRect(20, 105, 320, 35, COLOR_BLUE);
 
-    // Kreis und Mittelpunkt
+    // Circle and center point
     gfx->drawCircle(180, 235, 75, COLOR_YELLOW);
     gfx->fillCircle(180, 235, 8, COLOR_MAGENTA);
 
-    // Diagonalen
+    // Diagonals
     gfx->drawLine(20, 150, 340, 320, COLOR_WHITE);
     gfx->drawLine(340, 150, 20, 320, COLOR_WHITE);
 
@@ -116,11 +116,11 @@ void setup()
     Serial.println(" Rev 2.0 - 360 x 360");
     Serial.println("================================");
 
-    // Display-Hintergrundbeleuchtung ausschalten
+    // Turn off the display backlight
     pinMode(LCD_BL, OUTPUT);
     digitalWrite(LCD_BL, LOW);
 
-    // I2C fuer den TCA9554 starten
+    // Start I2C for the TCA9554
     Serial.println("Starte I2C ...");
 
     Wire.begin(IIC_SDA, IIC_SCL);
@@ -128,7 +128,7 @@ void setup()
 
     delay(100);
 
-    // TCA9554 initialisieren
+    // Initialize the TCA9554
     Serial.println("Initialisiere TCA9554 ...");
 
     if (!tca9554Begin(Wire)) {
@@ -138,7 +138,7 @@ void setup()
 
     Serial.println("TCA9554 OK");
 
-    // LCD ueber EXIO2 zuruecksetzen
+    // Reset the LCD through EXIO2
     Serial.println("Setze LCD zurueck ...");
 
     if (!tca9554PulseReset(EXIO_LCD_RESET, 20, 120)) {
@@ -148,7 +148,7 @@ void setup()
 
     Serial.println("LCD-Reset abgeschlossen");
 
-    // Display initialisieren
+    // Initialize the display
     Serial.println("Initialisiere ST77916 ...");
 
     if (!gfx->begin()) {
@@ -158,16 +158,16 @@ void setup()
 
     Serial.println("ST77916 erfolgreich initialisiert");
 
-    // Hintergrundbeleuchtung einschalten
+    // Turn on the backlight
     digitalWrite(LCD_BL, HIGH);
     delay(200);
 
     Serial.println("Display-Hintergrundbeleuchtung eingeschaltet");
 
-    // Farbtest
+    // Color test
     showColorTest();
 
-    // Grafiktest
+    // Graphics test
     showGraphicsTest();
 
     Serial.println();
