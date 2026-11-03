@@ -4,7 +4,7 @@
 
 #include <Wire.h>
 #include <time.h>
-#include <SensorPCF85063.hpp>
+#include <RtcDrv.hpp>
 
 // ------------------------------------------------------------
 // RTC PCF85063
