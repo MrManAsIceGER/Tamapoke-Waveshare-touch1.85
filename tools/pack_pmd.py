@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Empaquetador de sprites PMD (SpriteCollab) para la pantalla principal.
+"""Pack PMD (SpriteCollab) sprites for the main screen.
 
-Genera /mons/pNNN.bin (y psNNN.bin shiny) en formato TPK2 multi-accion:
+Generate /mons/pNNN.bin (and shiny psNNN.bin) in the TPK2 multi-action format:
 
   char[4] "TPK2"
   u8  nActs
   u16 palCount
   u16 pal[palCount]                  (RGB565)
-  por accion:
+  per action:
     u8 id, u8 w, u8 h, u8 nFrames
     u16 ms[nFrames]
-    u8 data[w*h*nFrames]             (indices, 0xFF transparente)
+    u8 data[w*h*nFrames]             (indices, 0xFF = transparent)
 
-Acciones: 0 Idle, 1 WalkL, 2 WalkR, 3 Sleep, 4 Eat, 5 Hurt, 6 Attack,
-7 Pose, 8 Hop, 9 Nod, 10 DeepBreath, 11 Sit. Las que falten se omiten.
+Actions: 0 Idle, 1 WalkL, 2 WalkR, 3 Sleep, 4 Eat, 5 Hurt, 6 Attack,
+7 Pose, 8 Hop, 9 Nod, 10 DeepBreath, 11 Sit. Missing actions are omitted.
 
   python3 tools/pack_pmd.py             # all 151, normal + shiny
   python3 tools/pack_pmd.py 7 25        # specific Dex numbers
