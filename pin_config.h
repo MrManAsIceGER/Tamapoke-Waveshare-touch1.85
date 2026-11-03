@@ -39,6 +39,10 @@
 #define IIC_SCL         10
 #define RTC_ADDR        0x51
 #define RTC_INT         9
+
+// Hardware-PWR-Taste / Batterie-Versorgung (laut Waveshare-Schaltplan)
+#define PWR_KEY_PIN     6   // Key BAT, aktiv LOW
+#define BAT_CTRL_PIN    7   // BAT Control, HIGH = Versorgung halten
 #define IMU_SDA         IIC_SDA
 #define IMU_SCL         IIC_SCL
 #define IMU_ADDR        0x6B
