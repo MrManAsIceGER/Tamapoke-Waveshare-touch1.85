@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Taller de sprites de TamaPoke.
+"""TamaPoke sprite workshop.
 
-Los sprites 32x32 se CONSTRUYEN con primitivas (elipses con sombreado
-automatico en el borde inferior-derecho, contorno automatico de silueta)
-y detalles a pixel (ojos, boca, manchas). El script valida, renderiza un
-contact-sheet PNG para revision visual, y emite los arrays C y JS:
+The 32x32 sprites are BUILT from primitives (ellipses with automatic
+bottom-right shading and automatic silhouette outlines) plus pixel-level
+details (eyes, mouth, spots). The script validates the sprites, renders a
+contact-sheet PNG for visual review, and emits the C and JS arrays:
 
   python3 tools/sprites.py        # validate and render tools/sheet.png
   python3 tools/sprites.py emit   # regenerate species.h and emitted_sprites.js
