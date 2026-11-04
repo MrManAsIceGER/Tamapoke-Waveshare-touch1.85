@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "esp_heap_caps.h"
 #include <string.h>
 #include "esp_intr_alloc.h"
@@ -13,6 +14,34 @@
 
 #include "esp_lcd_panel_io_interface.h"
 #include "esp_lcd_panel_ops.h"
+
+static SemaphoreHandle_t lcdTransferDone = nullptr;
+
+static bool lcdColorTransferDoneCallback(
+    esp_lcd_panel_io_handle_t panel_io,
+    esp_lcd_panel_io_event_data_t *event_data,
+    void *user_ctx) {
+  (void)panel_io;
+  (void)event_data;
+
+  SemaphoreHandle_t done = static_cast<SemaphoreHandle_t>(user_ctx);
+  if (done == nullptr) return false;
+
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
+  xSemaphoreGiveFromISR(done, &higherPriorityTaskWoken);
+  return higherPriorityTaskWoken == pdTRUE;
+}
+
+static bool lcdWaitForColorTransfer() {
+  if (lcdTransferDone == nullptr) return false;
+
+  if (xSemaphoreTake(lcdTransferDone, pdMS_TO_TICKS(100)) == pdTRUE) {
+    return true;
+  }
+
+  printf("[LCD] Timeout beim Warten auf DMA-Abschluss\n");
+  return false;
+}
 
 
 #define LCD_OPCODE_WRITE_CMD        (0x02ULL)
@@ -229,7 +258,12 @@ static void test_draw_bitmap(esp_lcd_panel_handle_t panel_handle)
               color[i * byte_per_pixel + k] = (SPI_SWAP_DATA_TX(BIT(j), EXAMPLE_LCD_COLOR_BITS) >> (k * 8)) & 0xff;
           }
       }
-      esp_lcd_panel_draw_bitmap(panel_handle, 0, j * row_line, EXAMPLE_LCD_HEIGHT, (j + 1) * row_line, color);
+      esp_err_t drawResult = esp_lcd_panel_draw_bitmap(
+          panel_handle, 0, j * row_line, EXAMPLE_LCD_HEIGHT,
+          (j + 1) * row_line, color);
+      if (drawResult == ESP_OK && !lcdWaitForColorTransfer()) {
+          vTaskDelay(pdMS_TO_TICKS(5));
+      }
   }
   free(color);
 }
@@ -255,6 +289,15 @@ int QSPI_Init(void){
     return 0;
   }
   printf("The SPI initialization succeeded.\r\n");
+
+  if (lcdTransferDone == nullptr) {
+    lcdTransferDone = xSemaphoreCreateBinary();
+    if (lcdTransferDone == nullptr) {
+      printf("LCD DMA completion semaphore allocation failed\r\n");
+      return 0;
+    }
+  }
+
   
   esp_lcd_panel_io_spi_config_t io_config ={
     .cs_gpio_num = ESP_PANEL_LCD_SPI_IO_CS,               
@@ -262,8 +305,8 @@ int QSPI_Init(void){
     .spi_mode = ESP_PANEL_LCD_SPI_MODE,                      
     .pclk_hz = 5 * 1000 * 1000,        
     .trans_queue_depth = ESP_PANEL_LCD_SPI_TRANS_QUEUE_SZ,            
-    .on_color_trans_done = NULL,                            
-    .user_ctx = NULL,                   
+    .on_color_trans_done = lcdColorTransferDoneCallback,                            
+    .user_ctx = lcdTransferDone,                   
     .lcd_cmd_bits = ESP_PANEL_LCD_SPI_CMD_BITS,                 
     .lcd_param_bits = ESP_PANEL_LCD_SPI_PARAM_BITS,                
     .flags = {                          
@@ -387,7 +430,12 @@ void LCD_addWindow(uint16_t Xstart, uint16_t Ystart, uint16_t Xend, uint16_t Yen
     Yend = EXAMPLE_LCD_HEIGHT;
     
   // printf("Xstart = %d    Ystart = %d    Xend = %d    Yend = %d \r\n",Xstart, Ystart, Xend, Yend);
-  esp_lcd_panel_draw_bitmap(panel_handle, Xstart, Ystart, Xend, Yend, color);                     // x_end End index on x-axis (x_end not included)
+  esp_err_t drawResult =
+      esp_lcd_panel_draw_bitmap(panel_handle, Xstart, Ystart, Xend, Yend, color);
+  if (drawResult == ESP_OK && !lcdWaitForColorTransfer()) {
+    // Sicherheitsnetz, falls der Completion-Callback ausbleibt.
+    delay(5);
+  } // x_end End index on x-axis (x_end not included)
 }
 
 

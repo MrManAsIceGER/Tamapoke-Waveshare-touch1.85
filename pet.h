@@ -103,7 +103,7 @@ public:
     return !isEgg() && (speciesId % 3) == color;
   }
 
-  void playResult(uint8_t score);
+  void playResult(uint16_t score);
   uint8_t trainStrength(uint16_t hits);
 
   // stats de combate: base real de gen 1 x genes + nivel + entrenamiento

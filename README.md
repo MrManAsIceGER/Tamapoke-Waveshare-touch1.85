@@ -2,8 +2,6 @@
 
 *Anleitung für TamaPoke auf dem Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0*
 
-Unter Tools/Sd Card/Mons sind alle 151 Pokemon Animationen zu finden. Einfach den Ordner "Mons" + alle alle 303 Dateien darin (normal und shiny) auf die SD karte kopieren. Das Spiel erkennt automatisch die Dateien und führt die Animation aus.
-
 ## 1. Das Spielprinzip
 
 TamaPoke ist ein Pokémon-Tamagotchi. Du kümmerst dich um ein Pokémon, hältst es gesund und glücklich, trainierst seine Fähigkeiten und begleitest es durch seinen Lebenszyklus.

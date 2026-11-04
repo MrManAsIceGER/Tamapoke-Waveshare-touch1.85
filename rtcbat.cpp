@@ -4,7 +4,7 @@
 
 #include <Wire.h>
 #include <time.h>
-#include <SensorPCF85063.hpp>
+#include <RtcDrv.hpp>
 
 // ------------------------------------------------------------
 // RTC PCF85063
@@ -74,55 +74,151 @@ void rtcSetEpoch(uint32_t e) {
 // ------------------------------------------------------------
 // Akku- und Ladeverwaltung
 //
-// Das Original verwendet einen AXP2101.
-// Dieser ist auf dem ESP32-S3-Touch-LCD-1.85 Rev 2.0
-// nicht vorhanden.
-//
-// Deshalb keine AXP2101-I2C-Zugriffe und keine erfundenen
-// Akku-Spannungs- oder Ladezustandswerte.
+// Waveshare ESP32-S3-Touch-LCD-1.85 Rev 2.0:
+//   BAT_ADC liegt auf GPIO8.
+//   200 kOhm / 100 kOhm Spannungsteiler: VBAT = VADC * 3.
+//   Der ADC liefert nur eine spannungsbasierte SOC-Schaetzung.
+//   ETA6098-STAT treibt die separate Lade-LED und ist nicht am ESP32
+//   angeschlossen; der Software-Ladezustand bleibt daher unbekannt.
 // ------------------------------------------------------------
 
-bool batBegin() {
-  Serial.println(
-    "Akku-Monitor: keine kompatible Messhardware vorhanden"
-  );
+static bool batReady = false;
+static bool batHasSample = false;
+static uint32_t batLastSampleMs = 0;
+static uint32_t batPollIntervalMs = 2000;
+static uint16_t batLastMv = 0;
+static int batLastPercent = -1;
 
-  return false;
+static constexpr uint8_t BAT_ADC_SAMPLES = 8;
+static constexpr uint16_t BAT_PRESENT_MIN_MV = 1500;
+static constexpr uint16_t BAT_ADC_DIVIDER = 3;
+
+struct BatteryCurvePoint {
+  uint16_t millivolts;
+  uint8_t percent;
+};
+
+// Grobe 1S-Li-Ion-Leerlaufkurve. Unter Last und waehrend des Ladens
+// kann die angezeigte Schaetzung von der tatsaechlichen Kapazitaet abweichen.
+static const BatteryCurvePoint BATTERY_CURVE[] = {
+  { 3300,   0 },
+  { 3500,   5 },
+  { 3600,  10 },
+  { 3700,  20 },
+  { 3750,  30 },
+  { 3800,  40 },
+  { 3850,  50 },
+  { 3900,  60 },
+  { 4000,  75 },
+  { 4100,  90 },
+  { 4200, 100 }
+};
+
+static int batEstimatePercent(uint16_t millivolts) {
+  constexpr size_t POINT_COUNT =
+      sizeof(BATTERY_CURVE) / sizeof(BATTERY_CURVE[0]);
+
+  if (millivolts <= BATTERY_CURVE[0].millivolts) return 0;
+  if (millivolts >= BATTERY_CURVE[POINT_COUNT - 1].millivolts) return 100;
+
+  for (size_t i = 1; i < POINT_COUNT; ++i) {
+    const BatteryCurvePoint &lo = BATTERY_CURVE[i - 1];
+    const BatteryCurvePoint &hi = BATTERY_CURVE[i];
+
+    if (millivolts <= hi.millivolts) {
+      const uint32_t spanMv = hi.millivolts - lo.millivolts;
+      const uint32_t offsetMv = millivolts - lo.millivolts;
+      const uint32_t spanPct = hi.percent - lo.percent;
+      return lo.percent + (int)((offsetMv * spanPct + spanMv / 2) / spanMv);
+    }
+  }
+
+  return 100;
+}
+
+static void batSampleVoltage() {
+  uint32_t adcMvSum = 0;
+
+  for (uint8_t i = 0; i < BAT_ADC_SAMPLES; ++i) {
+    adcMvSum += analogReadMilliVolts(BAT_ADC_PIN);
+  }
+
+  const uint32_t adcMv = (adcMvSum + BAT_ADC_SAMPLES / 2) / BAT_ADC_SAMPLES;
+  const uint32_t batteryMv = adcMv * BAT_ADC_DIVIDER;
+
+  batLastSampleMs = millis();
+  batHasSample = true;
+
+  // Ohne angeschlossenen Akku liegt BAT_ADC durch den unteren Widerstand
+  // nahe 0 V. Dann wird das Batteriesymbol wie bisher ausgeblendet.
+  if (batteryMv < BAT_PRESENT_MIN_MV) {
+    batLastMv = 0;
+    batLastPercent = -1;
+    return;
+  }
+
+  batLastMv = batteryMv > UINT16_MAX ? UINT16_MAX : (uint16_t)batteryMv;
+  batLastPercent = batEstimatePercent(batLastMv);
+}
+
+static void batUpdateIfDue() {
+  if (!batReady) return;
+
+  const uint32_t now = millis();
+  if (!batHasSample || now - batLastSampleMs >= batPollIntervalMs) {
+    batSampleVoltage();
+  }
+}
+
+bool batBegin() {
+  pinMode(BAT_ADC_PIN, INPUT);
+  analogReadResolution(12);
+  analogSetPinAttenuation(BAT_ADC_PIN, ADC_11db);
+
+  batReady = true;
+  batHasSample = false;
+  batSampleVoltage();
+
+  Serial.printf("[BAT] BAT_ADC GPIO%d bereit: %d mV, %d%%\n",
+                BAT_ADC_PIN, batLastMv, batLastPercent);
+  return true;
 }
 
 void pmuEnablePanel() {
-  // Nicht benötigt:
-  // Die Displayversorgung wird auf diesem Board nicht
-  // über den BLDO1-Ausgang eines AXP2101 geschaltet.
+  // Nicht benoetigt: die Panelversorgung wird nicht ueber einen AXP2101
+  // oder einen separaten PMU-Ausgang geschaltet.
 }
 
 void batSetPollMs(uint32_t ms) {
-  // Keine Akku-Messung vorhanden.
-  (void)ms;
+  // Mindestens 250 ms Abstand, damit ADC-Messungen nie den Renderloop fluten.
+  batPollIntervalMs = (ms < 250) ? 250 : ms;
 }
 
 int batPercent() {
-  return -1;
+  batUpdateIfDue();
+  return batLastPercent;
 }
 
 bool batCharging() {
+  // ETA6098-STAT ist nur mit der Hardware-Lade-LED verbunden.
+  // Ein Software-Ladesymbol waere ohne zusaetzliche Leitung geraten.
   return false;
 }
 
 int batMillivolts() {
-  return 0;
+  batUpdateIfDue();
+  return batLastPercent >= 0 ? batLastMv : 0;
 }
 
 bool batShouldShutdown() {
-  // Ohne zuverlässige Spannungsmessung darf das Spiel
-  // nicht aufgrund eines erfundenen Akkuwertes abschalten.
+  // Keine automatische harte Abschaltung auf Basis der nur geschaetzten
+  // Zellspannung: dafuer waeren eine validierte Schwelle und USB-Erkennung noetig.
   return false;
 }
 
 bool usbPresent() {
-  // Konservativer Rückgabewert:
-  // Verhindert, dass die vorhandene Spiel-Logik wegen
-  // eines nicht messbaren USB-Zustands abschaltet.
+  // Konservativer Rueckgabewert: verhindert eine unbeabsichtigte Abschaltung,
+  // solange das Board keine separate Software-USB-Erkennung bereitstellt.
   return true;
 }
 
@@ -154,7 +250,6 @@ static uint32_t pwrPressedAtMs = 0;
 
 static constexpr uint32_t PWR_DEBOUNCE_MS = 35;
 static constexpr uint32_t PWR_SHORT_MIN_MS = 60;
-static constexpr uint32_t PWR_SHORT_MAX_MS = 1500;
 static constexpr uint32_t PWR_LONG_MS = 4000;
 
 void pwrSetup() {
@@ -207,7 +302,7 @@ static void pwrUpdateButton() {
       } else if (duration >= PWR_LONG_MS) {
         if (!pwrLongReported) pwrLongPending = true;
       } else if (duration >= PWR_SHORT_MIN_MS &&
-                 duration <= PWR_SHORT_MAX_MS) {
+                 duration < PWR_LONG_MS) {
         pwrShortPending = true;
       }
     }
