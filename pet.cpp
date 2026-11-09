@@ -101,8 +101,10 @@ void Pet::update(uint32_t nowMs) {
     newEgg();
     return;
   }
-  while (nowMs - lastTick >= PET_TICK_MS) {
-    lastTick += PET_TICK_MS;
+  // God Mode advances all game-time systems ten times faster.
+  const uint32_t tickInterval = godMode ? (PET_TICK_MS / 10UL) : PET_TICK_MS;
+  while (nowMs - lastTick >= tickInterval) {
+    lastTick += tickInterval;
     tick();
   }
 }
@@ -166,22 +168,22 @@ void Pet::tick() {
   // Descuido: dejar una estadistica por los suelos cuenta como error de
   // cuidado (con enfriamiento para no contar el mismo descuido cada minuto)
   if (mistakeCooldown > 0) mistakeCooldown--;
-  if (lowestStat() <= 10 && mistakeCooldown == 0) {
+  if (!godMode && lowestStat() <= 10 && mistakeCooldown == 0) {
     careMistakes++;
     mistakeCooldown = 60;
-    if (bond > 1) bond--;  // el descuido enfria el vinculo, pero sin arrasarlo:
-                           // a -3 cada 30 min se perdia mucho mas de lo que se
-                           // podia ganar en todo un dia y el vinculo se atascaba
+    if (bond > 1) bond--;  // neglect cools the bond without wiping it out
   }
 
   checkMedals();  // la evolucion la dispara el usuario (canEvolveNow + tap), no el tick
 
   // abandono total: con TODO a cero durante una hora queda lista para escaparse;
   // NO se va sola, la dispara el usuario con el boton (final triste, lo presencia)
-  if (fullness == 0 && joy == 0 && energy == 0 && hygiene == 0) {
+  if (godMode) {
+    neglectTicks = 0;  // God Mode prevents neglect from building toward a runaway.
+  } else if (fullness == 0 && joy == 0 && energy == 0 && hygiene == 0) {
     if (neglectTicks < RUNAWAY_TICKS) neglectTicks++;
   } else {
-    neglectTicks = 0;  // un solo cuidado la salva
+    neglectTicks = 0;  // one care action is enough to save it
   }
 
   // ciclo completo (forma final + 7 dias): la despedida NO salta sola; queda
