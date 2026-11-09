@@ -503,7 +503,7 @@ void Pet::playJumpResult(uint16_t score) {
   if (ceremony != CER_NONE || isEgg()) return;
   uint16_t v = (uint16_t)trSpe + score / 5;
   trSpe = v > 100 ? 100 : (uint8_t)v;
-  joy = clamp100(joy + 5 + (score > 15 ? 30 : score * 2));
+  joy = clamp100(joy + 10 + (score > 15 ? 30 : score * 2));
   energy = dropTo(energy, 10 + score / 2, 5);
   fullness = dropTo(fullness, 5, 5);
   int burn = (int)weight - score * 2;
