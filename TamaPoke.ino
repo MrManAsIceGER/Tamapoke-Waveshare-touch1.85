@@ -96,6 +96,7 @@ bool gameMenuOpen = false;        // selector para los dos minijuegos
 bool gameOpen = false;            // minijuego de la pokeball (original)
 bool jumpGameOpen = false;        // carrera con saltos
 bool jumpGameOver = false;
+uint8_t jumpLives = 3;
 uint32_t jumpGameLastStep = 0;
 float jumpPlayerY = 394, jumpPlayerVY = 0;
 float jumpObstacleX = 510, jumpSpeed = 5.0f;
@@ -1626,6 +1627,7 @@ void startJumpGame() {
   jumpGameOpen = true;
   jumpGameOver = false;
   jumpScore = 0;
+  jumpLives = 3;
   jumpNewHi = false;
   jumpPlayerY = JUMP_GROUND_Y;
   jumpPlayerVY = 0;
@@ -1642,7 +1644,7 @@ void jumpGameTap(int16_t, int16_t y) {
     return;
   }
   if (jumpGameOver) {
-    startJumpGame();         // cualquier toque reinicia la carrera
+    jumpGameOpen = false;    // tap after game over exits the minigame
     return;
   }
   if (jumpPlayerY >= JUMP_GROUND_Y - 0.5f) {
@@ -1703,10 +1705,18 @@ void stepJumpGame() {
                    jumpObstacleX + jumpObstacleW > JUMP_PLAYER_X - playerHalfW;
   bool overlapsY = playerBottom > cactusTop && playerTop < JUMP_GROUND_Y - 4;
   if (overlapsX && overlapsY) {
-    jumpNewHi = jumpScore > pet.jumpHi;
-    pet.playJumpResult(jumpScore);
-    sfxPlay(jumpNewHi && jumpScore > 0 ? SFX_MEDAL : SFX_LEVEL);
-    jumpGameOver = true;
+    if (jumpLives > 0) jumpLives--;
+    if (jumpLives == 0) {
+      jumpNewHi = jumpScore > pet.jumpHi;
+      pet.playJumpResult(jumpScore);
+      sfxPlay(jumpNewHi && jumpScore > 0 ? SFX_MEDAL : SFX_LEVEL);
+      jumpGameOver = true;
+    } else {
+      jumpPlayerY = JUMP_GROUND_Y;
+      jumpPlayerVY = 0;
+      jumpObstacleX = 500 + random(130);
+      sfxPlay(SFX_HURT);
+    }
   }
 }
 
@@ -1814,6 +1824,12 @@ void renderJumpGame() {
   setSize(2);
   setCur(centerX(rec, 2), 76);
   printT(rec);
+  char lives[8];
+  snprintf(lives, sizeof(lives), "L:%u", jumpLives);
+  setSize(2);
+  gfx->setTextColor(ink);
+  setCur(414, 76);
+  printT(lives);
 
   if (jumpGameOver) {
     gfx->fillRoundRect(78, 132, 310, 210, 20, UI_WHITE);
