@@ -499,6 +499,22 @@ void Pet::playResult(uint16_t score) {
 }
 
 // saco de entrenamiento: los golpes entrenan la fuerza. Devuelve la subida.
+void Pet::playJumpResult(uint16_t score) {
+  if (ceremony != CER_NONE || isEgg()) return;
+  uint16_t v = (uint16_t)trSpe + score / 5;
+  trSpe = v > 100 ? 100 : (uint8_t)v;
+  joy = clamp100(joy + 5 + (score > 15 ? 30 : score * 2));
+  energy = dropTo(energy, 10 + score / 2, 5);
+  fullness = dropTo(fullness, 5, 5);
+  int burn = (int)weight - score * 2;
+  weight = burn > 0 ? burn : 0;
+  if (score >= 5) heartUntil = millis() + HEART_MS;
+  if (score > jumpHi) jumpHi = score;
+  addBond(2);
+  registerCare();
+  save();
+}
+
 uint8_t Pet::trainStrength(uint16_t hits) {
   if (ceremony != CER_NONE || isEgg()) return 0;
   uint8_t gain = hits / 4;          // ~4 golpes = 1 punto de entrenamiento
@@ -608,6 +624,7 @@ void Pet::save() {
   prefs.putUShort("tmedal", totalMedals);
   prefs.putUShort("mstone", lastMilestone);
   prefs.putUShort("ghi", gameHi);
+  prefs.putUShort("jhi", jumpHi);
   prefs.putUShort("shi", strHi);
   prefs.putString("nick", nick);
 }
@@ -660,6 +677,7 @@ void Pet::load() {
   totalMedals = prefs.getUShort("tmedal", 0);
   lastMilestone = prefs.getUShort("mstone", 0);
   gameHi = prefs.getUShort("ghi", 0);
+  jumpHi = prefs.getUShort("jhi", 0);
   strHi = prefs.getUShort("shi", 0);
   prefs.getString("nick", nick, sizeof(nick));
   // siembra: la mascota actual cuenta como criada (guardados antiguos)
