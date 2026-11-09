@@ -92,7 +92,18 @@ struct { int16_t x, y; uint8_t r, ph; } bubbles[14];
 uint32_t feedMenuUntil = 0;   // selector de comida abierto hasta este millis
 
 // minijuego "toques": mantener la pokeball en el aire
-bool gameOpen = false;
+bool gameMenuOpen = false;        // selector para los dos minijuegos
+bool gameOpen = false;            // minijuego de la pokeball (original)
+bool jumpGameOpen = false;        // carrera con saltos
+bool jumpGameOver = false;
+uint32_t jumpGameLastStep = 0, jumpAnimStart = 0;
+float jumpPlayerY = 394, jumpPlayerVY = 0;
+float jumpObstacleX = 510, jumpSpeed = 5.0f;
+uint8_t jumpObstacleW = 28, jumpObstacleH = 52;
+uint16_t jumpScore = 0;
+bool jumpNewHi = false;
+static const int16_t JUMP_PLAYER_X = 112;
+static const int16_t JUMP_GROUND_Y = 394;
 uint32_t gameOverUntil = 0;
 float ballX, ballY, ballVX, ballVY, gamePetX;
 uint32_t lastGameStep = 0;  // ultima llamada a stepGame(): fisica por tiempo real, no por frame
@@ -404,7 +415,7 @@ PowerCtx powerCtx(uint32_t now) {
   c.idleMs = idleSince(now, lastInteract);
   c.screenOff = screenOff;
   c.sleeping = pet.sleeping;
-  c.gameOpen = gameOpen || sackOpen;
+  c.gameOpen = gameMenuOpen || gameOpen || jumpGameOpen || sackOpen;
   c.usb = usbPresent();
   c.charging = batCharging();
   c.batPct = batPercent();
@@ -741,8 +752,16 @@ void onTap(int16_t x, int16_t y) {
     }
     return;
   }
+  if (gameMenuOpen) {
+    gameMenuTap(x, y);
+    return;
+  }
   if (gameOpen) {
     gameTap(x, y);
+    return;
+  }
+  if (jumpGameOpen) {
+    jumpGameTap(x, y);
     return;
   }
   if (choiceKind) {          // dialogo de decision: boton accion (arriba) / mantener (abajo)
@@ -800,7 +819,7 @@ void onTap(int16_t x, int16_t y) {
       if (i == 0) {
         if (!pet.sleeping) feedMenuUntil = millis() + 6000;
       } else if (i == 1) {
-        startGame();
+        if (!pet.sleeping) gameMenuOpen = true;
       } else if (i == 2) {
         pet.toggleLight();
       } else {
@@ -1084,7 +1103,7 @@ void printT(const char *s) {
 // mientras su "clave" no cambie no se repintan ni se vuelcan por QSPI.
 static bool staticScreen() {
   if (pet.awaitingStarter()) return true;
-  if (galleryOpen || gameOpen || sackOpen) return false;  // la galeria gestiona su propio repintado
+  if (galleryOpen || gameMenuOpen || gameOpen || jumpGameOpen || sackOpen) return false;  // la galeria gestiona su propio repintado
   if (kbOpen || clockOpen) return true;
   return cardOpen && cardPage != 0;  // la pagina 0 tiene el retrato animado
 }
@@ -1133,8 +1152,16 @@ bool render() {
     renderGallery();
     return true;
   }
+  if (gameMenuOpen) {
+    renderGameMenu();
+    return true;
+  }
   if (gameOpen) {
     renderGame();
+    return true;
+  }
+  if (jumpGameOpen) {
+    renderJumpGame();
     return true;
   }
   if (sackOpen) {
@@ -1573,6 +1600,250 @@ void renderGame() {
   // la pokeball
   drawMap(SPR_ICON_PLAY, 16, (int)ballX - 24, (int)ballY - 24, 3, false);
 
+  gfx->flush();
+}
+
+
+// ---------- selector de minijuegos y carrera con saltos ----------
+
+void gameMenuTap(int16_t x, int16_t y) {
+  if (y < 76 || (y >= 330 && y <= 390)) {
+    gameMenuOpen = false;
+    return;
+  }
+  if (x < 90 || x > 376) return;
+  if (y >= 140 && y <= 224) {
+    gameMenuOpen = false;
+    startGame();             // conserva el juego original de la pokeball
+  } else if (y >= 232 && y <= 318) {
+    startJumpGame();
+  }
+}
+
+void startJumpGame() {
+  if (pet.isEgg() || pet.sleeping || pet.ceremony) return;
+  gameMenuOpen = false;
+  jumpGameOpen = true;
+  jumpGameOver = false;
+  jumpScore = 0;
+  jumpNewHi = false;
+  jumpPlayerY = JUMP_GROUND_Y;
+  jumpPlayerVY = 0;
+  jumpSpeed = 5.0f;
+  jumpObstacleW = 24 + random(15);
+  jumpObstacleH = 42 + random(24);
+  jumpObstacleX = 500 + random(120);
+  jumpAnimStart = millis();
+  jumpGameLastStep = millis();
+}
+
+void jumpGameTap(int16_t, int16_t y) {
+  if (y < 72) {              // tocar la cabecera = salir
+    jumpGameOpen = false;
+    return;
+  }
+  if (jumpGameOver) {
+    startJumpGame();         // cualquier toque reinicia la carrera
+    return;
+  }
+  if (jumpPlayerY >= JUMP_GROUND_Y - 0.5f) {
+    jumpPlayerVY = -16.5f;
+    jumpAnimStart = millis();
+    sfxPlay(SFX_PLAY);
+  }
+}
+
+int jumpPokemonHeight() {
+  if (pmd.loaded) {
+    uint8_t h = pmd.acts[PMD_IDLE].h;
+    int s = h ? 170 / h : 3;
+    if (s < 2) s = 2;
+    if (s > 3) s = 3;
+    return h * s;
+  }
+  if (mon.loaded) {
+    int s = (mon.h * 2 > 130) ? 1 : 2;
+    return mon.h * s;
+  }
+  int fi = flashIdxForDex(pet.speciesId);
+  return fi >= 0 ? 32 * SPECIES[fi].scale : 76;
+}
+
+void stepJumpGame() {
+  uint32_t now = millis();
+  float k = jumpGameLastStep ? (now - jumpGameLastStep) / 85.0f : 1.0f;
+  if (k > 3.0f) k = 3.0f;
+  jumpGameLastStep = now;
+
+  // fisica independiente del tiempo que tarde en dibujarse cada especie
+  if (jumpPlayerY < JUMP_GROUND_Y - 0.5f || jumpPlayerVY < 0) {
+    jumpPlayerVY += 1.65f * k;
+    jumpPlayerY += jumpPlayerVY * k;
+    if (jumpPlayerY >= JUMP_GROUND_Y) {
+      jumpPlayerY = JUMP_GROUND_Y;
+      jumpPlayerVY = 0;
+    }
+  }
+
+  jumpObstacleX -= jumpSpeed * k;
+  if (jumpObstacleX + jumpObstacleW < JUMP_PLAYER_X - 22) {
+    if (jumpScore < 65535) jumpScore++;
+    jumpSpeed = 5.0f + jumpScore * 0.22f;
+    if (jumpSpeed > 10.5f) jumpSpeed = 10.5f;
+    jumpObstacleW = 24 + random(15);
+    jumpObstacleH = 42 + random(24);
+    jumpObstacleX = 500 + random(130);
+  }
+
+  const float cactusTop = JUMP_GROUND_Y - jumpObstacleH;
+  const int playerHalfW = 23;
+  const float playerTop = jumpPlayerY - jumpPokemonHeight() + 12;
+  const float playerBottom = jumpPlayerY - 6;
+  bool overlapsX = jumpObstacleX < JUMP_PLAYER_X + playerHalfW &&
+                   jumpObstacleX + jumpObstacleW > JUMP_PLAYER_X - playerHalfW;
+  bool overlapsY = playerBottom > cactusTop && playerTop < JUMP_GROUND_Y - 4;
+  if (overlapsX && overlapsY) {
+    jumpNewHi = jumpScore > pet.jumpHi;
+    pet.playJumpResult(jumpScore);
+    sfxPlay(jumpNewHi && jumpScore > 0 ? SFX_MEDAL : SFX_LEVEL);
+    jumpGameOver = true;
+  }
+}
+
+void drawJumpObstacle() {
+  int x = (int)jumpObstacleX;
+  int top = JUMP_GROUND_Y - jumpObstacleH;
+  uint16_t green = C565(0x48, 0x9f, 0x58);
+  int trunkW = jumpObstacleW / 3;
+  int trunkX = x + (jumpObstacleW - trunkW) / 2;
+  gfx->fillRoundRect(trunkX, top, trunkW, jumpObstacleH, 4, green);
+  if (jumpObstacleH > 48) {
+    gfx->fillRoundRect(x, top + jumpObstacleH / 3, trunkW + 5, 7, 3, green);
+    gfx->fillRoundRect(x, top + jumpObstacleH / 3 - 12, 7, 18, 3, green);
+    gfx->fillRoundRect(trunkX + trunkW - 5, top + jumpObstacleH / 2, trunkW + 5, 7, 3, green);
+    gfx->fillRoundRect(trunkX + jumpObstacleW / 3, top + jumpObstacleH / 2 - 13, 7, 19, 3, green);
+  }
+}
+
+void drawJumpPokemon() {
+  uint32_t now = millis();
+  bool airborne = jumpPlayerY < JUMP_GROUND_Y - 0.5f;
+  if (pmd.loaded) {
+    uint8_t act = airborne && pmd.has(PMD_HOP) ? PMD_HOP :
+                  pmd.has(PMD_WALKR) ? PMD_WALKR : PMD_IDLE;
+    bool loopAct = act == PMD_WALKR;
+    uint32_t t = airborne && act == PMD_HOP ? now - jumpAnimStart : now;
+    drawPmdAct(act, JUMP_PLAYER_X, (int)jumpPlayerY, t, loopAct, false, 3);
+  } else if (mon.loaded) {
+    int s = (mon.h * 2 > 130) ? 1 : 2;
+    int w = mon.w * s, h = mon.h * s;
+    uint16_t fm = mon.frameMs ? mon.frameMs : 100;
+    uint16_t fi = (now / fm) % mon.frames;
+    const uint8_t *fr = mon.data + (uint32_t)fi * mon.w * mon.h;
+    int px = JUMP_PLAYER_X - w / 2, py = (int)jumpPlayerY - h;
+    for (int r = 0; r < mon.h; r++) {
+      const uint8_t *row = fr + r * mon.w;
+      forRuns(mon.w, [&](int c) { return indexedKey(row[c], false); },
+              [&](int c0, int len, int k) { gfx->fillRect(px + c0 * s, py + r * s, len * s, s, mon.pal[k]); });
+    }
+  } else {
+    int fi = flashIdxForDex(pet.speciesId);
+    if (fi >= 0) {
+      const Species &sp = SPECIES[fi];
+      int s = sp.scale;
+      drawMap(sp.sprite, SPRITE_H, JUMP_PLAYER_X - 16 * s,
+              (int)jumpPlayerY - 32 * s, s, false);
+    }
+  }
+}
+
+void renderGameMenu() {
+  drawGameScene();
+  uint16_t ink = sceneHour() < 6 || sceneHour() >= 20 ? UI_INK_NIGHT : UI_INK;
+  gfx->fillRoundRect(60, 82, 346, 302, 22, UI_WHITE);
+  gfx->drawRoundRect(60, 82, 346, 302, 22, ink);
+  setSize(3);
+  gfx->setTextColor(ink);
+  setCur(centerX(T(S_MINIGAMES), 3), 101);
+  printT(T(S_MINIGAMES));
+
+  gfx->fillRoundRect(92, 145, 282, 82, 16, C565(0xf1, 0xf4, 0xe9));
+  gfx->drawRoundRect(92, 145, 282, 82, 16, ink);
+  drawMap(SPR_ICON_PLAY, 16, 112, 162, 3, false);
+  setSize(3);
+  gfx->setTextColor(ink);
+  setCur(190, 173);
+  printT(T(S_GAME_BALL));
+
+  gfx->fillRoundRect(92, 238, 282, 82, 16, C565(0xf1, 0xf4, 0xe9));
+  gfx->drawRoundRect(92, 238, 282, 82, 16, ink);
+  // kleines Kaktus-Symbol fur das neue Laufspiel
+  gfx->fillRoundRect(128, 253, 13, 51, 5, C565(0x48, 0x9f, 0x58));
+  gfx->fillRoundRect(116, 269, 16, 7, 3, C565(0x48, 0x9f, 0x58));
+  gfx->fillRoundRect(116, 259, 7, 17, 3, C565(0x48, 0x9f, 0x58));
+  gfx->fillRoundRect(138, 280, 16, 7, 3, C565(0x48, 0x9f, 0x58));
+  gfx->fillRoundRect(147, 270, 7, 17, 3, C565(0x48, 0x9f, 0x58));
+  setSize(3);
+  gfx->setTextColor(ink);
+  setCur(190, 266);
+  printT(T(S_GAME_JUMP));
+
+  setSize(2);
+  gfx->setTextColor(ink);
+  setCur(centerX(T(S_BACK), 2), 344);
+  printT(T(S_BACK));
+  gfx->flush();
+}
+
+void renderJumpGame() {
+  drawGameScene();
+  if (!jumpGameOver) stepJumpGame();
+
+  uint16_t ink = sceneHour() < 6 || sceneHour() >= 20 ? UI_INK_NIGHT : UI_INK;
+  gfx->fillRect(0, JUMP_GROUND_Y, 466, 3, ink);
+  drawJumpObstacle();
+  drawJumpPokemon();
+
+  char score[12];
+  snprintf(score, sizeof(score), "%u", jumpScore);
+  gfx->setTextColor(ink);
+  setSize(4);
+  setCur(centerX(score, 4), 26);
+  printT(score);
+  char rec[24];
+  snprintf(rec, sizeof(rec), T(S_REC_FMT), pet.jumpHi);
+  setSize(2);
+  setCur(centerX(rec, 2), 76);
+  printT(rec);
+
+  if (jumpGameOver) {
+    gfx->fillRoundRect(78, 132, 310, 210, 20, UI_WHITE);
+    gfx->drawRoundRect(78, 132, 310, 210, 20, ink);
+    char result[22];
+    snprintf(result, sizeof(result), T(S_SCORE_FMT), jumpScore);
+    setSize(4);
+    setCur(centerX(result, 4), 158);
+    printT(result);
+    setSize(2);
+    if (jumpNewHi && jumpScore > 0) {
+      gfx->setTextColor(UI_BAR_WARN);
+      setCur(centerX(T(S_NEW_RECORD), 2), 222);
+      printT(T(S_NEW_RECORD));
+    } else {
+      char best[24];
+      snprintf(best, sizeof(best), T(S_REC_FMT), pet.jumpHi);
+      gfx->setTextColor(ink);
+      setCur(centerX(best, 2), 222);
+      printT(best);
+    }
+    gfx->setTextColor(ink);
+    setCur(centerX(T(S_JUMP_RETRY), 2), 280);
+    printT(T(S_JUMP_RETRY));
+  } else {
+    setSize(2);
+    setCur(centerX(T(S_JUMP_HINT), 2), 116);
+    printT(T(S_JUMP_HINT));
+  }
   gfx->flush();
 }
 
