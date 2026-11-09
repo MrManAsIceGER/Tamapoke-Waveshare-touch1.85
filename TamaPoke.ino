@@ -1824,12 +1824,10 @@ void renderJumpGame() {
   setSize(2);
   setCur(centerX(rec, 2), 76);
   printT(rec);
-  char lives[8];
-  snprintf(lives, sizeof(lives), "L:%u", jumpLives);
-  setSize(2);
-  gfx->setTextColor(ink);
-  setCur(414, 76);
-  printT(lives);
+  // Three heart icons show the remaining lives beside the score.
+  for (uint8_t i = 0; i < 3; i++) {
+    drawMap(SPR_HEART, 32, 316 + i * 34, 30, 1, i >= jumpLives);
+  }
 
   if (jumpGameOver) {
     gfx->fillRoundRect(78, 132, 310, 210, 20, UI_WHITE);
