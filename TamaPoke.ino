@@ -1869,7 +1869,7 @@ void renderJumpGame() {
   printT(rec);
   // Three heart icons show the remaining lives beside the score.
   for (uint8_t i = 0; i < 3; i++) {
-    drawMap(SPR_HEART, 32, 316 + i * 34, 30, 1, i >= jumpLives);
+    drawMap(SPR_HEART, 32, 250 + i * 34, 30, 1, i >= jumpLives);
   }
 
   if (jumpGameOver) {
