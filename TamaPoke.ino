@@ -1715,7 +1715,7 @@ void stepJumpGame() {
       jumpPlayerY = JUMP_GROUND_Y;
       jumpPlayerVY = 0;
       jumpObstacleX = 500 + random(130);
-      sfxPlay(SFX_HURT);
+      sfxPlay(SFX_DENY);
     }
   }
 }
