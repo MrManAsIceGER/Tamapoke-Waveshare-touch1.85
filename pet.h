@@ -95,6 +95,10 @@ public:
   void begin();
   void update(uint32_t nowMs);
 
+  // Temporary debug mode: run game time at 10x and suppress care mistakes.
+  void setGodMode(bool enabled) { godMode = enabled; }
+  bool godModeEnabled() const { return godMode; }
+
   // Acciones (botones tactiles)
   void feed();
   void feedBerry(uint8_t color);
@@ -223,6 +227,7 @@ private:
   void checkMedals();
 
   Preferences prefs;
+  bool godMode = false;  // runtime-only; intentionally not persisted
   uint32_t lastTick = 0;
   uint32_t eatUntil = 0;
   uint32_t heartUntil = 0;
