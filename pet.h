@@ -89,6 +89,7 @@ public:
   uint16_t newMedal = 0;
   uint16_t lastMilestone = 0;
   uint16_t gameHi = 0;
+  uint16_t jumpHi = 0;  // record independiente de la carrera con saltos
   uint16_t strHi = 0;
 
   void begin();
@@ -104,6 +105,7 @@ public:
   }
 
   void playResult(uint16_t score);
+  void playJumpResult(uint16_t score);
   uint8_t trainStrength(uint16_t hits);
 
   // stats de combate: base real de gen 1 x genes + nivel + entrenamiento
