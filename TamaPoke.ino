@@ -96,7 +96,7 @@ bool gameMenuOpen = false;        // selector para los dos minijuegos
 bool gameOpen = false;            // minijuego de la pokeball (original)
 bool jumpGameOpen = false;        // carrera con saltos
 bool jumpGameOver = false;
-uint32_t jumpGameLastStep = 0, jumpAnimStart = 0;
+uint32_t jumpGameLastStep = 0;
 float jumpPlayerY = 394, jumpPlayerVY = 0;
 float jumpObstacleX = 510, jumpSpeed = 5.0f;
 uint8_t jumpObstacleW = 28, jumpObstacleH = 52;
@@ -1629,11 +1629,10 @@ void startJumpGame() {
   jumpNewHi = false;
   jumpPlayerY = JUMP_GROUND_Y;
   jumpPlayerVY = 0;
-  jumpSpeed = 5.0f;
+  jumpSpeed = 6.0f;
   jumpObstacleW = 24 + random(15);
   jumpObstacleH = 42 + random(24);
   jumpObstacleX = 500 + random(120);
-  jumpAnimStart = millis();
   jumpGameLastStep = millis();
 }
 
@@ -1648,7 +1647,6 @@ void jumpGameTap(int16_t, int16_t y) {
   }
   if (jumpPlayerY >= JUMP_GROUND_Y - 0.5f) {
     jumpPlayerVY = -16.5f;
-    jumpAnimStart = millis();
     sfxPlay(SFX_PLAY);
   }
 }
@@ -1677,7 +1675,9 @@ void stepJumpGame() {
 
   // fisica independiente del tiempo que tarde en dibujarse cada especie
   if (jumpPlayerY < JUMP_GROUND_Y - 0.5f || jumpPlayerVY < 0) {
-    jumpPlayerVY += 1.65f * k;
+    // Beim Fallen wirkt eine staerkere Schwerkraft: Der Sprung bleibt
+    // gut lesbar, aber das Pokemon kommt deutlich flotter wieder herunter.
+    jumpPlayerVY += (jumpPlayerVY > 0 ? 2.35f : 1.65f) * k;
     jumpPlayerY += jumpPlayerVY * k;
     if (jumpPlayerY >= JUMP_GROUND_Y) {
       jumpPlayerY = JUMP_GROUND_Y;
@@ -1688,8 +1688,8 @@ void stepJumpGame() {
   jumpObstacleX -= jumpSpeed * k;
   if (jumpObstacleX + jumpObstacleW < JUMP_PLAYER_X - 22) {
     if (jumpScore < 65535) jumpScore++;
-    jumpSpeed = 5.0f + jumpScore * 0.22f;
-    if (jumpSpeed > 10.5f) jumpSpeed = 10.5f;
+    jumpSpeed = 6.0f + jumpScore * 0.24f;
+    if (jumpSpeed > 12.0f) jumpSpeed = 12.0f;
     jumpObstacleW = 24 + random(15);
     jumpObstacleH = 42 + random(24);
     jumpObstacleX = 500 + random(130);
@@ -1727,13 +1727,12 @@ void drawJumpObstacle() {
 
 void drawJumpPokemon() {
   uint32_t now = millis();
-  bool airborne = jumpPlayerY < JUMP_GROUND_Y - 0.5f;
   if (pmd.loaded) {
-    uint8_t act = airborne && pmd.has(PMD_HOP) ? PMD_HOP :
-                  pmd.has(PMD_WALKR) ? PMD_WALKR : PMD_IDLE;
-    bool loopAct = act == PMD_WALKR;
-    uint32_t t = airborne && act == PMD_HOP ? now - jumpAnimStart : now;
-    drawPmdAct(act, JUMP_PLAYER_X, (int)jumpPlayerY, t, loopAct, false, 3);
+    // Immer dieselbe Rechtslauf-Animation verwenden; beim Springen und
+    // Fallen bewegt sich nur der Fusspunkt vertikal.
+    uint8_t act = pmd.has(PMD_WALKR) ? PMD_WALKR : PMD_IDLE;
+    uint32_t runAnimTime = (uint32_t)(now * 1.20f);
+    drawPmdAct(act, JUMP_PLAYER_X, (int)jumpPlayerY, runAnimTime, true, false, 3);
   } else if (mon.loaded) {
     int s = (mon.h * 2 > 130) ? 1 : 2;
     int w = mon.w * s, h = mon.h * s;
