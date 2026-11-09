@@ -491,7 +491,47 @@ void handleSerial() {
   if (line.length() == 0) return;
   if (sdSerialCommand(line)) return;
 
-  if (line == "HATCH") {
+  if (line == "HELP") {
+    Serial.println("=== TamaPoke Serial Commands ===");
+    Serial.println("HELP          - Show this command list");
+    Serial.println("STATS         - Show Pokemon stats");
+    Serial.println("SPEC <1-151>  - Change species by Pokedex number");
+    Serial.println("LVL <number>  - Set level");
+    Serial.println("NICK <name>   - Rename Pokemon");
+    Serial.println("SHINY         - Toggle shiny");
+    Serial.println("GOD           - Toggle God Mode");
+    Serial.println("GOD ON|OFF    - Enable or disable God Mode");
+    Serial.println("HATCH         - Hatch the current egg");
+    Serial.println("TIME          - Show RTC time");
+    Serial.println("TIME <epoch>  - Set RTC and game time");
+    Serial.println("RTCSET <epoch>- Set RTC only");
+    Serial.println("GAL           - Toggle Pokedex gallery");
+    Serial.println("EGGS          - Simulate 20 egg rolls");
+    Serial.println("CAREDAY       - Simulate one care day");
+    Serial.println("BYE           - Start farewell sequence");
+    Serial.println("RUN           - Start runaway sequence");
+    Serial.println("ABANDON       - Force runaway-ready state");
+    Serial.println("BEEP          - Test sound");
+    Serial.println("HEALTH        - Show system health");
+    Serial.println("REG           - List registered Pokemon");
+    Serial.println("WIPE          - Erase save and restart");
+    Serial.println("God Mode: 10x game-time; low stats add no care mistakes.");
+    Serial.println("God Mode is temporary and resets after reboot.");
+    Serial.println("================================");
+    Serial.println("DONE");
+  } else if (line == "GOD") {
+    pet.setGodMode(!pet.godModeEnabled());
+    Serial.printf("God Mode %s (game time %sx)\\n",
+                  pet.godModeEnabled() ? "ON" : "OFF",
+                  pet.godModeEnabled() ? "10" : "1");
+    Serial.println("DONE");
+  } else if (line == "GOD ON" || line == "GOD OFF") {
+    pet.setGodMode(line == "GOD ON");
+    Serial.printf("God Mode %s (game time %sx)\\n",
+                  pet.godModeEnabled() ? "ON" : "OFF",
+                  pet.godModeEnabled() ? "10" : "1");
+    Serial.println("DONE");
+  } else if (line == "HATCH") {
     pet.eggTap(); pet.eggTap(); pet.eggTap();
     Serial.println("DONE");
   } else if (line.startsWith("SPEC ")) {
@@ -585,6 +625,9 @@ void handleSerial() {
     Serial.printf("shiny=%d streak=%u/%u bond=%u medals=0x%X(%u) nick=%s\n",
                   pet.shiny, pet.streak, pet.bestStreak, pet.bond, pet.medals,
                   pet.totalMedals, pet.nick);
+    Serial.printf("god=%s time=%sx\\n",
+                  pet.godModeEnabled() ? "ON" : "OFF",
+                  pet.godModeEnabled() ? "10" : "1");
     Serial.println("DONE");
   }
 }
