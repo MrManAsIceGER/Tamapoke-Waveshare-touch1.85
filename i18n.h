@@ -31,6 +31,8 @@ enum StrId : uint8_t {
   // minijuego y saco
   S_HITS_FMT, S_STR_GAIN_FMT, S_NEW_RECORD, S_RECORD_FMT, S_HIT_FAST,
   S_SCORE_FMT, S_GREAT_JOY, S_PLUS_JOY,
+  // selector y carrera con saltos
+  S_MINIGAMES, S_GAME_BALL, S_GAME_JUMP, S_JUMP_HINT, S_JUMP_RETRY,
   // reloj / ajustes
   S_SET_TIME, S_HOUR, S_MIN, S_CLOCK_CANCEL, S_LANG_LABEL,
   // celebracion
