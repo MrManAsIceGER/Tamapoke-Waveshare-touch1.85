@@ -521,13 +521,13 @@ void handleSerial() {
     Serial.println("DONE");
   } else if (line == "GOD") {
     pet.setGodMode(!pet.godModeEnabled());
-    Serial.printf("God Mode %s (game time %sx)\\n",
+    Serial.printf("God Mode %s (game time %sx)\n",
                   pet.godModeEnabled() ? "ON" : "OFF",
                   pet.godModeEnabled() ? "10" : "1");
     Serial.println("DONE");
   } else if (line == "GOD ON" || line == "GOD OFF") {
     pet.setGodMode(line == "GOD ON");
-    Serial.printf("God Mode %s (game time %sx)\\n",
+    Serial.printf("God Mode %s (game time %sx)\n",
                   pet.godModeEnabled() ? "ON" : "OFF",
                   pet.godModeEnabled() ? "10" : "1");
     Serial.println("DONE");
@@ -625,7 +625,7 @@ void handleSerial() {
     Serial.printf("shiny=%d streak=%u/%u bond=%u medals=0x%X(%u) nick=%s\n",
                   pet.shiny, pet.streak, pet.bestStreak, pet.bond, pet.medals,
                   pet.totalMedals, pet.nick);
-    Serial.printf("god=%s time=%sx\\n",
+    Serial.printf("god=%s time=%sx\n",
                   pet.godModeEnabled() ? "ON" : "OFF",
                   pet.godModeEnabled() ? "10" : "1");
     Serial.println("DONE");
